@@ -1,0 +1,65 @@
+# ───────────────────────────────────────
+#            General / OS / Editors
+# ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# ───────────────────────────────────────
+#            Node.js / Frontend
+# ───────────────────────────────────────
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.npmrc
+.yarnrc
+yarn-error.log
+.pnpm-store/
+
+# ───────────────────────────────────────
+#            Foundry / Hardhat style
+# ───────────────────────────────────────
+cache/
+out/
+broadcast/
+broadcasts/
+forge-artifacts/
+forge-cache/
+*.t.sol.cache.sol
+*.t.sol.out/
+
+# ───────────────────────────────────────
+#            Dependencies (lib is git submodule – usually ignored)
+# ───────────────────────────────────────
+# lib/                  ← usually ignored, but some teams commit it
+# If you want to commit lib/ → comment out the next line
+lib/
+
+# ───────────────────────────────────────
+#            Secrets / Temp
+# ───────────────────────────────────────
+.env*
+!/.env.example
+*.key
+*.pem
+*.secret
+
+# ───────────────────────────────────────
+#            Logs / Temp files
+# ───────────────────────────────────────
+*.log
+tmp/
+temp/
