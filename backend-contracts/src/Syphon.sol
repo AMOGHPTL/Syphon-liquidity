@@ -6,8 +6,10 @@ import {MarketParams, Position, Market, ISyphonBase} from "./interfaces/ISyphon.
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockIrm} from "./mocks/MockIrm.sol";
 import {console} from "forge-std/Test.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 
 contract Syphon is ISyphonBase {
+    using Math for uint256;
     /************* Errors ******************/
     error Syphon__InvalidMarketParams();
     error Syphon__MarketAlredyExists();
@@ -18,18 +20,22 @@ contract Syphon is ISyphonBase {
     error Syphon_UserFoundWithNegativeIntereset();
     error Syphon__InsufficientUserSupply();
     error Syphon__InsufficientMarketSupply();
+    error Syphon__CollateralTransferFailed();
+    error Syphon__InvalidWithdrawAmount();
 
     /************ Events ******************/
     event MarketCreated(bytes32 indexed id, MarketParams marketParams);
     event Supplied(bytes32 id, address supplyToken, uint256 indexed amountToSupply);
     event withdrawn(bytes32 id, address withdrawToken, uint256 indexed amountToWithdraw);
+    event collateralSupplied(bytes32 id, address collateralToken, uint256 indexed collateralAmount);
 
-    /***************** variables********** */
+    /*************** variables *********************/
     address private owner;
     mapping(bytes32 id => Market) sMarket;
     mapping(bytes32 id => MarketParams marketParams) sIdToMarketParam;
     mapping(bytes32 id => mapping(address => Position)) sPositions;
     bytes32[] sMarketIds;
+    uint256 constant SHARE_PRECISION = 1e18;
 
     /****************** modifier *******************/
     modifier idMatchesParams(MarketParams memory marketParams, bytes32 id) {
@@ -104,53 +110,74 @@ contract Syphon is ISyphonBase {
     /**
      * lenders functions
      */
-    function supply(MarketParams memory marketParams, bytes32 id, address supplyToken, uint256 amountToSupply)
+    function supply(MarketParams memory marketParams, bytes32 id, uint256 amountToSupply)
         external
         idMatchesParams(marketParams, id)
-        invalidToken(supplyToken)
         amountIsZero(amountToSupply)
     {
-        sMarket[id].totalSupplyAssets += amountToSupply;
-        sPositions[id][msg.sender] = Position(amountToSupply, 0, 0, block.timestamp);
-        bool success = IERC20(supplyToken).transferFrom(msg.sender, address(this), amountToSupply);
+        _accrueInterest(marketParams, id);
+        if (sMarket[id].totalSupplyAssets == 0) {
+            // First ever supply
+            uint256 shares = amountToSupply == 0 ? 0 : SHARE_PRECISION; // or amountToSupply, or 1e18, etc.
+            sMarket[id].totalSupplyShares = shares;
+            sMarket[id].totalSupplyAssets = amountToSupply;
+            sPositions[id][msg.sender].supplyShares = shares;
+        } else {
+            // Your original (but still wrong long-term) logic
+            uint256 shares = amountToSupply.mulDiv(SHARE_PRECISION, sMarket[id].totalSupplyAssets);
+            sMarket[id].totalSupplyShares += shares;
+            sMarket[id].totalSupplyAssets += amountToSupply;
+            sPositions[id][msg.sender].supplyShares += shares;
+        }
+
+        sMarket[id].lastUpdate = block.timestamp;
+
+        bool success = IERC20(marketParams.loanToken).transferFrom(msg.sender, address(this), amountToSupply);
         if (!success) {
             revert Syphon__SupplyTransferFailed();
         }
-        sPositions[id][msg.sender].lastUpdatedAt = block.timestamp;
-        emit Supplied(id, supplyToken, amountToSupply);
+        emit Supplied(id, marketParams.loanToken, amountToSupply);
     }
 
-    function withdraw(MarketParams memory marketParams, bytes32 id, address withdrawToken, uint256 amountToWithdraw)
+    function withdraw(MarketParams memory marketParams, bytes32 id, uint256 amountToWithdraw, uint256 sharesToWithdraw)
         external
         idMatchesParams(marketParams, id)
-        invalidToken(withdrawToken)
-        amountIsZero(amountToWithdraw)
-        checkWithdrawAmount(id, msg.sender, amountToWithdraw)
         checkMarketSupply(id, amountToWithdraw)
     {
-        uint256 usersInterest = calculateInterest(marketParams, id, msg.sender);
-        if (usersInterest < 0) revert Syphon_UserFoundWithNegativeIntereset();
-        uint256 amountWithInterest = sPositions[id][msg.sender].supplyShares + usersInterest;
+        if (amountToWithdraw == 0 && sharesToWithdraw == 0) {
+            revert Syphon__InvalidWithdrawAmount();
+        }
+        uint256 sharesToBurn;
+        uint256 amountToGive;
+        _accrueInterest(marketParams, id);
 
-        sMarket[id].totalSupplyAssets -= amountToWithdraw;
-        sPositions[id][msg.sender].supplyShares -= amountToWithdraw;
-        IERC20(withdrawToken).transfer(msg.sender, amountWithInterest);
+        if (amountToWithdraw == 0) {
+            sharesToBurn = sharesToWithdraw;
+        } else {
+            sharesToBurn =
+            ((sPositions[id][msg.sender].supplyShares * amountToWithdraw) / sMarket[id].totalSupplyAssets);
+        }
+        amountToGive = Math.mulDiv(sharesToBurn, sMarket[id].totalSupplyAssets, sMarket[id].totalSupplyShares);
+        console.log("user supply shares while withdraw:", sPositions[id][msg.sender].supplyShares);
+        console.log("shares to burn:", sharesToBurn);
+        sMarket[id].totalSupplyAssets -= amountToGive;
+        sPositions[id][msg.sender].supplyShares -= sharesToBurn;
+        sMarket[id].totalSupplyShares -= sharesToBurn;
+        IERC20(marketParams.loanToken).transfer(msg.sender, amountToGive);
 
-        sPositions[id][msg.sender].lastUpdatedAt = block.timestamp;
-
-        emit withdrawn(id, withdrawToken, amountToWithdraw);
+        emit withdrawn(id, marketParams.loanToken, amountToWithdraw);
     }
 
     /**
      * borrowers functions
      */
 
-    function supplyCollateral(
-        MarketParams memory marketParams,
-        bytes32 id,
-        address collateralToken,
-        uint256 amountToSupply
-    ) external idMatchesParams(marketParams, id) {}
+    function supplyCollateral(MarketParams memory marketParams, bytes32 id, uint256 collateralAmount)
+        external
+        idMatchesParams(marketParams, id)
+        invalidToken(collateralToken)
+        amountIsZero(collateralAmount)
+    {}
     function withdrawCollateral(
         MarketParams memory marketParams,
         bytes32 id,
@@ -184,27 +211,14 @@ contract Syphon is ISyphonBase {
         uint256 repayAmout
     ) external idMatchesParams(marketParams, id) {}
 
-    /********************* External view functions ***********************/
-    function calculateInterest(MarketParams memory marketParms, bytes32 id, address user)
-        public
-        view
-        returns (uint256)
-    {
-        Position memory userPosition = sPositions[id][user];
-        uint256 lastUpdate = userPosition.lastUpdatedAt;
-        uint256 userSupply = userPosition.supplyShares;
-        uint256 userBorrow = userPosition.borrowShares;
-        console.log("syphon block timestamp:", block.timestamp);
-        uint256 timeSpend = block.timestamp - lastUpdate;
-        Market memory market = sMarket[id];
-        uint256 interestRate = MockIrm(marketParms.irm).borrowRate(market);
-        console.log("intersetRate:", interestRate);
-        uint256 dailyInterst = interestRate / 365;
-        console.log("daily interest:", dailyInterst);
-        if (timeSpend == 0) return 0;
-        uint256 interest =
-            ((userSupply) * (dailyInterst * timeSpend)) / 1e18 - ((userBorrow) * (dailyInterst * timeSpend)) / 1e18;
-        return interest;
+    function _accrueInterest(MarketParams memory marketParams, bytes32 id) public {
+        uint256 elapsed = block.timestamp - sMarket[id].lastUpdate;
+        uint256 borrowRate = MockIrm(marketParams.irm).borrowRate(sMarket[id]);
+        uint256 dailyBorrowRate = borrowRate / 365;
+        uint256 interest = dailyBorrowRate * sMarket[id].totalBorrowAssets * elapsed;
+
+        sMarket[id].totalSupplyAssets += interest;
+        sMarket[id].totalBorrowAssets += interest;
     }
 
     ////////////////////**********************getter functions*********//////////////////////

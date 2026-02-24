@@ -14,7 +14,6 @@ struct Position {
     uint256 supplyShares;
     uint256 borrowShares;
     uint256 collateral;
-    uint256 lastUpdatedAt;
 }
 
 struct Market {
@@ -35,21 +34,15 @@ interface ISyphonBase {
     /**
      * lenders functions
      */
-    function supply(MarketParams memory marketParams, bytes32 id, address collateralToken, uint256 amountToSupply)
-        external;
-    function withdraw(MarketParams memory marketParams, bytes32 id, address collateralToken, uint256 amountToWithdraw)
+    function supply(MarketParams memory marketParams, bytes32 id, uint256 amountToSupply) external;
+    function withdraw(MarketParams memory marketParams, bytes32 id, uint256 amountToWithdraw, uint256 shareToWithdraw)
         external;
 
     /**
      * borrowers functions
      */
 
-    function supplyCollateral(
-        MarketParams memory marketParams,
-        bytes32 id,
-        address collateralToken,
-        uint256 amountToSupply
-    ) external;
+    function supplyCollateral(MarketParams memory marketParams, bytes32 id, uint256 amountToSupply) external;
     function withdrawCollateral(
         MarketParams memory marketParams,
         bytes32 id,
