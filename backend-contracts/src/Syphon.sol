@@ -22,12 +22,15 @@ contract Syphon is ISyphonBase {
     error Syphon__InsufficientMarketSupply();
     error Syphon__CollateralTransferFailed();
     error Syphon__InvalidWithdrawAmount();
+    error Syphon__WithdrwalFailed();
+    error Syphon__CollateralWithdrawFailed();
 
     /************ Events ******************/
     event MarketCreated(bytes32 indexed id, MarketParams marketParams);
     event Supplied(bytes32 id, address supplyToken, uint256 indexed amountToSupply);
     event withdrawn(bytes32 id, address withdrawToken, uint256 indexed amountToWithdraw);
     event collateralSupplied(bytes32 id, address collateralToken, uint256 indexed collateralAmount);
+    event collateralWithdrawn(bytes32 id, address collateralToken, uint256 indexed collateralToWithdraw);
 
     /*************** variables *********************/
     address private owner;
@@ -163,7 +166,10 @@ contract Syphon is ISyphonBase {
         sMarket[id].totalSupplyAssets -= amountToGive;
         sPositions[id][msg.sender].supplyShares -= sharesToBurn;
         sMarket[id].totalSupplyShares -= sharesToBurn;
-        IERC20(marketParams.loanToken).transfer(msg.sender, amountToGive);
+        bool success = IERC20(marketParams.loanToken).transfer(msg.sender, amountToGive);
+        if (!success) {
+            revert Syphon__WithdrwalFailed();
+        }
 
         emit withdrawn(id, marketParams.loanToken, amountToWithdraw);
     }
@@ -175,15 +181,30 @@ contract Syphon is ISyphonBase {
     function supplyCollateral(MarketParams memory marketParams, bytes32 id, uint256 collateralAmount)
         external
         idMatchesParams(marketParams, id)
-        invalidToken(collateralToken)
         amountIsZero(collateralAmount)
-    {}
-    function withdrawCollateral(
-        MarketParams memory marketParams,
-        bytes32 id,
-        address collateralToken,
-        uint256 amountToWithdraw
-    ) external idMatchesParams(marketParams, id) {}
+    {
+        sPositions[id][msg.sender].collateral += collateralAmount;
+        bool succes = IERC20(marketParams.collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
+        if (!succes) {
+            revert Syphon__CollateralTransferFailed();
+        }
+
+        emit collateralSupplied(id, marketParams.collateralToken, collateralAmount);
+    }
+
+    function withdrawCollateral(MarketParams memory marketParams, bytes32 id, uint256 collateralToWithdraw)
+        external
+        idMatchesParams(marketParams, id)
+        amountIsZero(collateralToWithdraw)
+    {
+        sPositions[id][msg.sender].collateral -= collateralToWithdraw;
+        bool succes = IERC20(marketParams.collateralToken).transfer(msg.sender, collateralToWithdraw);
+        if (!succes) {
+            revert Syphon__CollateralWithdrawFailed();
+        }
+
+        emit collateralWithdrawn(id, marketParams.collateralToken, collateralToWithdraw);
+    }
     function borrow(
         MarketParams memory marketParams,
         bytes32 id,

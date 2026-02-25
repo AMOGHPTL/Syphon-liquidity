@@ -215,10 +215,10 @@ contract SyphonTest is Test {
         IERC20(loanToken).approve(address(syphon), 10 ether);
         syphon.supply(marketParams, id, 10 ether);
         vm.stopPrank();
-        // vm.startPrank(USER);
-        // IERC20(loanToken).approve(address(syphon), 20 ether);
-        // syphon.supply(marketParams, id, 20 ether);
-        // vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
         //assert
         console.log("user1 balance after 2 deposits:", IERC20(loanToken).balanceOf(USER));
         Market memory afterMarket = syphon.getMarketInfo(id);
@@ -241,44 +241,6 @@ contract SyphonTest is Test {
         console.log("user1 balance after withdraw:", IERC20(loanToken).balanceOf(USER));
     }
 
-    // function testLiquidityProvidersCanWithdrawFundsWithInterest() public {
-    //     //accquire
-    //     bytes32 id = syphon.createId(marketParams);
-    //     Market memory beforeMarket = syphon.getMarketInfo(id);
-    //     Position memory beforePositions = syphon.getUserPosition(id, USER);
-    //     console.log("user positon before:", beforePositions.supplyShares);
-    //     console.log("before supply:", beforeMarket.totalSupplyAssets);
-    //     //act
-    //     vm.startPrank(USER);
-    //     IERC20(collateralToken).approve(address(syphon), 20 ether);
-    //     syphon.supply(marketParams, id, address(collateralToken), 20 ether);
-    //     vm.stopPrank();
-    //     //assert
-    //     Market memory afterMarket = syphon.getMarketInfo(id);
-    //     Position memory afterPositions = syphon.getUserPosition(id, USER);
-    //     console.log("user positon after:", afterPositions.supplyShares);
-    //     console.log("after supply:", afterMarket.totalSupplyAssets);
-    //     assertEq(afterMarket.totalSupplyAssets, beforeMarket.totalSupplyAssets + 20 ether);
-    //     assertEq(afterPositions.supplyShares, beforePositions.supplyShares + 20 ether);
-
-    //     vm.startPrank(USER2);
-    //     IERC20(collateralToken).approve(address(syphon), 20 ether);
-    //     syphon.supply(marketParams, id, address(collateralToken), 20 ether);
-    //     vm.stopPrank();
-
-    //     vm.warp(block.timestamp + 1);
-    //     vm.roll(block.number + 1);
-
-    //     vm.startPrank(USER);
-    //     syphon.withdraw(marketParams, id, address(collateralToken), 20 ether);
-    //     vm.stopPrank();
-    //     Market memory withdrawMarket = syphon.getMarketInfo(id);
-    //     Position memory withdrawPositions = syphon.getUserPosition(id, USER);
-    //     console.log("user positon after withdraw:", withdrawPositions.supplyShares);
-    //     console.log("after withdraw supply:", withdrawMarket.totalSupplyAssets);
-    //     assert(IERC20(collateralToken).balanceOf(USER) > 100 ether);
-    // }
-
     function testAccrueInterest() public {
         bytes32 id = syphon.createId(marketParams);
         vm.startPrank(USER);
@@ -291,5 +253,42 @@ contract SyphonTest is Test {
         syphon._accrueInterest(marketParams, id);
         Market memory marketAfterIntrest = syphon.getMarketInfo(id);
         console.log("market assets after interest:", marketAfterIntrest.totalSupplyAssets);
+    }
+
+    function testBorrowerCanSupplyCollateral() public {
+        //accquire
+        bytes32 id = syphon.createId(marketParams);
+        Position memory usersinitialPosition = syphon.getUserPosition(id, USER);
+        console.log("user inital collateral:", usersinitialPosition.collateral);
+        //Act
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        vm.stopPrank();
+        //assert
+        Position memory usersPositionAfterCollateralSupply = syphon.getUserPosition(id, USER);
+        console.log("user collateral after collateral supply:", usersPositionAfterCollateralSupply.collateral);
+        assertEq(usersinitialPosition.collateral + 20 ether, usersPositionAfterCollateralSupply.collateral);
+    }
+
+    function testBorrowerCanWithdrawCollateralWhenNoBorrows() public {
+        //accquire
+        bytes32 id = syphon.createId(marketParams);
+        Position memory usersinitialPosition = syphon.getUserPosition(id, USER);
+        console.log("user inital collateral:", usersinitialPosition.collateral);
+        //Act
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        vm.stopPrank();
+        Position memory usersPositionAfterCollateralSupply = syphon.getUserPosition(id, USER);
+        console.log("user collateral after collateral supply:", usersPositionAfterCollateralSupply.collateral);
+        vm.startPrank(USER);
+        syphon.withdrawCollateral(marketParams, id, 20 ether);
+        vm.stopPrank();
+        Position memory usersPositionAfterCollateralWithdraw = syphon.getUserPosition(id, USER);
+        console.log("user collateral after collateral Withdraw:", usersPositionAfterCollateralWithdraw.collateral);
+        //assert
+        assertEq(usersinitialPosition.collateral, usersPositionAfterCollateralWithdraw.collateral);
     }
 }
