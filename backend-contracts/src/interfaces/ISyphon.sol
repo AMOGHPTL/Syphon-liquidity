@@ -44,13 +44,7 @@ interface ISyphonBase {
 
     function supplyCollateral(MarketParams memory marketParams, bytes32 id, uint256 amountToSupply) external;
     function withdrawCollateral(MarketParams memory marketParams, bytes32 id, uint256 amountToWithdraw) external;
-    function borrow(
-        MarketParams memory marketParams,
-        bytes32 id,
-        address collateralToken,
-        address loanToken,
-        uint256 amountToSupply
-    ) external;
+    function borrow(MarketParams memory marketParams, bytes32 id, uint256 amountToBorrow) external;
     function repay(
         MarketParams memory marketParams,
         bytes32 id,

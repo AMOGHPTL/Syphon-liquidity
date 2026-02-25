@@ -24,6 +24,10 @@ contract Syphon is ISyphonBase {
     error Syphon__InvalidWithdrawAmount();
     error Syphon__WithdrwalFailed();
     error Syphon__CollateralWithdrawFailed();
+    error Syphon__UnderCollateralized();
+    error Syphon__MarketDoesNotExits();
+    error Syphon__InsufficientLoanSupply();
+    error Syphon__BorrowTransferFailed();
 
     /************ Events ******************/
     event MarketCreated(bytes32 indexed id, MarketParams marketParams);
@@ -31,6 +35,7 @@ contract Syphon is ISyphonBase {
     event withdrawn(bytes32 id, address withdrawToken, uint256 indexed amountToWithdraw);
     event collateralSupplied(bytes32 id, address collateralToken, uint256 indexed collateralAmount);
     event collateralWithdrawn(bytes32 id, address collateralToken, uint256 indexed collateralToWithdraw);
+    event borrowed(bytes32 id, address loanToken, uint256 indexed borrowAmount);
 
     /*************** variables *********************/
     address private owner;
@@ -39,12 +44,22 @@ contract Syphon is ISyphonBase {
     mapping(bytes32 id => mapping(address => Position)) sPositions;
     bytes32[] sMarketIds;
     uint256 constant SHARE_PRECISION = 1e18;
+    uint256 constant OVER_COLLATERALIZED_RATE = 120e15;
+    uint256 constant OVER_COLLATERALIZED_PRECISION = 1e18;
 
     /****************** modifier *******************/
     modifier idMatchesParams(MarketParams memory marketParams, bytes32 id) {
         bytes32 expectedId = createId(marketParams);
         if (expectedId != id) {
             revert Syphon__InvalidIdOrParams();
+        }
+        _;
+    }
+
+    modifier marketExists(bytes32 id) {
+        Market memory market = sMarket[id];
+        if (market.lastUpdate == 0) {
+            revert Syphon__MarketDoesNotExits();
         }
         _;
     }
@@ -126,7 +141,6 @@ contract Syphon is ISyphonBase {
             sMarket[id].totalSupplyAssets = amountToSupply;
             sPositions[id][msg.sender].supplyShares = shares;
         } else {
-            // Your original (but still wrong long-term) logic
             uint256 shares = amountToSupply.mulDiv(SHARE_PRECISION, sMarket[id].totalSupplyAssets);
             sMarket[id].totalSupplyShares += shares;
             sMarket[id].totalSupplyAssets += amountToSupply;
@@ -197,6 +211,7 @@ contract Syphon is ISyphonBase {
         idMatchesParams(marketParams, id)
         amountIsZero(collateralToWithdraw)
     {
+        Position memory position = sPositions[id][msg.sender];
         sPositions[id][msg.sender].collateral -= collateralToWithdraw;
         bool succes = IERC20(marketParams.collateralToken).transfer(msg.sender, collateralToWithdraw);
         if (!succes) {
@@ -205,13 +220,49 @@ contract Syphon is ISyphonBase {
 
         emit collateralWithdrawn(id, marketParams.collateralToken, collateralToWithdraw);
     }
-    function borrow(
-        MarketParams memory marketParams,
-        bytes32 id,
-        address collateralToken,
-        address loanToken,
-        uint256 amountToSupply
-    ) external idMatchesParams(marketParams, id) {}
+
+    function borrow(MarketParams memory marketParams, bytes32 id, uint256 amountToBorrow)
+        external
+        idMatchesParams(marketParams, id)
+        amountIsZero(amountToBorrow)
+        marketExists(id)
+    {
+        _accrueInterest(marketParams, id);
+        Position memory position = sPositions[id][msg.sender];
+        Market memory market = sMarket[id];
+
+        //check if the borrower is over collateralized
+        uint256 requiredCollateral = (amountToBorrow * OVER_COLLATERALIZED_RATE) / OVER_COLLATERALIZED_PRECISION;
+        console.log("required collateral :", requiredCollateral);
+        if (position.collateral < requiredCollateral) {
+            revert Syphon__UnderCollateralized();
+        }
+        if (amountToBorrow > market.totalSupplyAssets) {
+            revert Syphon__InsufficientLoanSupply();
+        }
+
+        if (sMarket[id].totalBorrowAssets == 0) {
+            // First ever borrow
+            uint256 shares = amountToBorrow == 0 ? 0 : SHARE_PRECISION; // or amountToBorrow, or 1e18, etc.
+            sMarket[id].totalBorrowShares = shares;
+            sMarket[id].totalBorrowAssets = amountToBorrow;
+            sPositions[id][msg.sender].borrowShares = shares;
+        } else {
+            uint256 shares = amountToBorrow.mulDiv(SHARE_PRECISION, sMarket[id].totalBorrowAssets);
+            sMarket[id].totalBorrowShares += shares;
+            sMarket[id].totalBorrowAssets += amountToBorrow;
+            sPositions[id][msg.sender].borrowShares += shares;
+        }
+
+        sMarket[id].lastUpdate = block.timestamp;
+
+        bool success = IERC20(marketParams.loanToken).transfer(msg.sender, amountToBorrow);
+        if (!success) {
+            revert Syphon__BorrowTransferFailed();
+        }
+
+        emit borrowed(id, marketParams.loanToken, amountToBorrow);
+    }
     function repay(
         MarketParams memory marketParams,
         bytes32 id,

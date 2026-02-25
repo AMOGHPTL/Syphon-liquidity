@@ -44,6 +44,12 @@ contract SyphonTest is Test {
         vm.stopPrank();
     }
 
+    modifier createdMarket() {
+        bytes32 id = syphon.createId(marketParams);
+        syphon.createMarket(marketParams, id);
+        _;
+    }
+
     function testCreateMarket() public {
         //acquire
         uint256 initialMarkets = syphon.getMarkets().length;
@@ -290,5 +296,27 @@ contract SyphonTest is Test {
         console.log("user collateral after collateral Withdraw:", usersPositionAfterCollateralWithdraw.collateral);
         //assert
         assertEq(usersinitialPosition.collateral, usersPositionAfterCollateralWithdraw.collateral);
+    }
+
+    function testBorrow() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+        Position memory position = syphon.getUserPosition(id, USER);
+        Market memory market = syphon.getMarketInfo(id);
+        console.log("user supply shares:", position.supplyShares);
+        console.log("user borrow shares:", position.borrowShares);
+        console.log("user collateral:", position.collateral);
+        console.log("market supply assets:", market.totalSupplyAssets);
+        console.log("market supply shares:", market.totalSupplyShares);
+        console.log("market borrow assets:", market.totalBorrowAssets);
+        console.log("market borrow shares:", market.totalBorrowShares);
     }
 }
