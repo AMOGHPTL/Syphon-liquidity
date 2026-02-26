@@ -319,4 +319,31 @@ contract SyphonTest is Test {
         console.log("market borrow assets:", market.totalBorrowAssets);
         console.log("market borrow shares:", market.totalBorrowShares);
     }
+
+    function testRepay() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+        vm.startPrank(USER2);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(marketParams.loanToken).approve(address(syphon), 5 ether);
+        syphon.repay(marketParams, id, 2 ether, 0);
+        vm.stopPrank();
+        Position memory position = syphon.getUserPosition(id, USER);
+        Market memory market = syphon.getMarketInfo(id);
+        console.log("user borrow shares:", position.borrowShares);
+        console.log("market borrow assets:", market.totalBorrowAssets);
+        console.log("market borrow shares:", market.totalBorrowShares);
+    }
 }

@@ -28,6 +28,9 @@ contract Syphon is ISyphonBase {
     error Syphon__MarketDoesNotExits();
     error Syphon__InsufficientLoanSupply();
     error Syphon__BorrowTransferFailed();
+    error Syphon__InvalidRepayAmount();
+    error Syphon__RepayTransferFailed();
+    error Syphon__AmbiguousRepayInput();
 
     /************ Events ******************/
     event MarketCreated(bytes32 indexed id, MarketParams marketParams);
@@ -36,6 +39,7 @@ contract Syphon is ISyphonBase {
     event collateralSupplied(bytes32 id, address collateralToken, uint256 indexed collateralAmount);
     event collateralWithdrawn(bytes32 id, address collateralToken, uint256 indexed collateralToWithdraw);
     event borrowed(bytes32 id, address loanToken, uint256 indexed borrowAmount);
+    event repayed(bytes32 id, uint256 indexed sharesRepayed, uint256 repayAmount);
 
     /*************** variables *********************/
     address private owner;
@@ -263,13 +267,48 @@ contract Syphon is ISyphonBase {
 
         emit borrowed(id, marketParams.loanToken, amountToBorrow);
     }
-    function repay(
-        MarketParams memory marketParams,
-        bytes32 id,
-        address collateralToken,
-        address loanToken,
-        uint256 amountToRepay
-    ) external idMatchesParams(marketParams, id) {}
+
+    function repay(MarketParams memory marketParams, bytes32 id, uint256 amountToRepay, uint256 sharesToRepay)
+        external
+        idMatchesParams(marketParams, id)
+    {
+        if (amountToRepay == 0 && sharesToRepay == 0) {
+            revert Syphon__InvalidRepayAmount();
+        }
+        if (amountToRepay != 0 && sharesToRepay != 0) {
+            revert Syphon__AmbiguousRepayInput();
+        }
+        _accrueInterest(marketParams, id);
+        uint256 sharesToBurn;
+        uint256 repayAmount;
+        Market memory market = sMarket[id];
+        Position memory position = sPositions[id][msg.sender];
+
+        if (amountToRepay == 0) {
+            sharesToBurn = sharesToRepay;
+        } else {
+            sharesToBurn = Math.mulDiv(amountToRepay, market.totalBorrowShares, market.totalBorrowAssets);
+        }
+        console.log("user borrow shares:", position.borrowShares);
+        console.log("shares to repay:", sharesToRepay);
+        console.log("amount to repay:", amountToRepay);
+        console.log("market total borrow shares:", market.totalBorrowShares);
+        console.log("market total borrow assets:", market.totalBorrowAssets);
+        console.log("shares to burn:", sharesToBurn);
+
+        repayAmount = Math.mulDiv(sharesToBurn, market.totalBorrowAssets, market.totalBorrowShares);
+        console.log("repayAmount:", repayAmount);
+
+        sMarket[id].totalBorrowShares -= sharesToBurn;
+        sMarket[id].totalBorrowAssets -= repayAmount;
+        sPositions[id][msg.sender].borrowShares -= sharesToBurn;
+        bool success = IERC20(marketParams.loanToken).transferFrom(msg.sender, address(this), repayAmount);
+        if (!success) {
+            revert Syphon__RepayTransferFailed();
+        }
+
+        emit repayed(id, sharesToBurn, repayAmount);
+    }
 
     /**
      * liquidation functions
