@@ -50,6 +50,8 @@ contract SyphonTest is Test {
         _;
     }
 
+    /******************** Create Market tests ******************/
+
     function testCreateMarket() public {
         //acquire
         uint256 initialMarkets = syphon.getMarkets().length;
@@ -62,7 +64,21 @@ contract SyphonTest is Test {
         console.log("markets:", markets);
     }
 
-    function testLiquidityProviderCanSupply() public {
+    function testUserCantCreateMarketWhichAlredyExist() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.expectRevert();
+        syphon.createMarket(marketParams, id);
+    }
+
+    function testUserCantCreateMarketWithInvalidMarketParams() public {
+        bytes32 id = syphon.createId(marketParams);
+        vm.expectRevert();
+        syphon.createMarket(MarketParams(address(1), address(1), address(1), address(0), 90), id);
+    }
+
+    /***************** Supply tests **************/
+
+    function testLiquidityProviderCanSupply() public createdMarket {
         //accquire
         bytes32 id = syphon.createId(marketParams);
         Market memory beforeMarket = syphon.getMarketInfo(id);
@@ -84,7 +100,7 @@ contract SyphonTest is Test {
         assert(afterPositions.supplyShares > beforePositions.supplyShares);
     }
 
-    function testSupplyingMoreIncreasesUserSupplyShare() public {
+    function testSupplyingMoreIncreasesUserSupplyShare() public createdMarket {
         //accquire
         bytes32 id = syphon.createId(marketParams);
         Market memory beforeMarket = syphon.getMarketInfo(id);
@@ -117,7 +133,7 @@ contract SyphonTest is Test {
         assert(afterPositions2.supplyShares > beforePositions.supplyShares);
     }
 
-    function testMultipleUsersCanSupply() public {
+    function testMultipleUsersCanSupply() public createdMarket {
         //accquire
         bytes32 id = syphon.createId(marketParams);
         Market memory beforeMarket = syphon.getMarketInfo(id);
@@ -142,7 +158,18 @@ contract SyphonTest is Test {
         assert(afterPositions.supplyShares > beforePositions.supplyShares);
     }
 
-    function testLiquidityProvidersCanWithdrawFunds() public {
+    function testLiquiditySupplyCantBeZero() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        vm.expectRevert();
+        syphon.supply(marketParams, id, 0 ether);
+        vm.stopPrank();
+    }
+
+    /*************** Withdraw funds *************** */
+
+    function testLiquidityProvidersCanWithdrawFunds() public createdMarket {
         //accquire
         bytes32 id = syphon.createId(marketParams);
         Market memory beforeMarket = syphon.getMarketInfo(id);
@@ -173,7 +200,7 @@ contract SyphonTest is Test {
         assert(IERC20(loanToken).balanceOf(USER) >= 10 ether);
     }
 
-    function testUserCanWithDrawUsingSharesInput() public {
+    function testUserCanWithDrawUsingSharesInput() public createdMarket {
         //accquire
         bytes32 id = syphon.createId(marketParams);
         Market memory beforeMarket = syphon.getMarketInfo(id);
@@ -204,7 +231,19 @@ contract SyphonTest is Test {
         assert(IERC20(loanToken).balanceOf(USER) >= 10 ether);
     }
 
-    function testLiquidityProvidersCanWithdrawFundsWithMultipleLiquidityProviders() public {
+    function testUserCantWithdrawWithInvalidWithdrawParams() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        vm.expectRevert();
+        syphon.withdraw(marketParams, id, 0, 0);
+        vm.stopPrank();
+    }
+
+    function testLiquidityProvidersCanWithdrawFundsWithMultipleLiquidityProviders() public createdMarket {
         //accquire
         console.log("user1 initial balance:", IERC20(loanToken).balanceOf(USER));
         bytes32 id = syphon.createId(marketParams);
@@ -247,7 +286,21 @@ contract SyphonTest is Test {
         console.log("user1 balance after withdraw:", IERC20(loanToken).balanceOf(USER));
     }
 
-    function testAccrueInterest() public {
+    function testUserCantWithdrawMoreThanTheirSupply() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        vm.expectRevert(Syphon.Syphon__InsufficientShares.selector);
+        syphon.withdraw(marketParams, id, 30 ether, 0);
+        vm.stopPrank();
+    }
+
+    /*************** Accrue Interset test **************** */
+
+    function testAccrueInterest() public createdMarket {
         bytes32 id = syphon.createId(marketParams);
         vm.startPrank(USER);
         IERC20(loanToken).approve(address(syphon), 20 ether);
@@ -261,7 +314,9 @@ contract SyphonTest is Test {
         console.log("market assets after interest:", marketAfterIntrest.totalSupplyAssets);
     }
 
-    function testBorrowerCanSupplyCollateral() public {
+    /******************* Supply collateral tests ******************/
+
+    function testBorrowerCanSupplyCollateral() public createdMarket {
         //accquire
         bytes32 id = syphon.createId(marketParams);
         Position memory usersinitialPosition = syphon.getUserPosition(id, USER);
@@ -277,7 +332,9 @@ contract SyphonTest is Test {
         assertEq(usersinitialPosition.collateral + 20 ether, usersPositionAfterCollateralSupply.collateral);
     }
 
-    function testBorrowerCanWithdrawCollateralWhenNoBorrows() public {
+    /******* Withdraw with no borrows *******/
+
+    function testBorrowerCanWithdrawCollateralWhenNoBorrows() public createdMarket {
         //accquire
         bytes32 id = syphon.createId(marketParams);
         Position memory usersinitialPosition = syphon.getUserPosition(id, USER);
@@ -297,6 +354,8 @@ contract SyphonTest is Test {
         //assert
         assertEq(usersinitialPosition.collateral, usersPositionAfterCollateralWithdraw.collateral);
     }
+
+    /********************** Borrow tests **********************/
 
     function testBorrowersCanBorrow() public createdMarket {
         bytes32 id = syphon.createId(marketParams);
@@ -319,6 +378,31 @@ contract SyphonTest is Test {
         console.log("market borrow assets:", market.totalBorrowAssets);
         console.log("market borrow shares:", market.totalBorrowShares);
     }
+
+    function testBorrowsCantBorrowWithoutCollateral() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        vm.expectRevert(Syphon.Syphon__UnderCollateralized.selector);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+    }
+
+    function testBorrowsCantHappenWhenThereIsNoOrLessLoanTokenSupply() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        vm.expectRevert(Syphon.Syphon__InsufficientLoanSupply.selector);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+    }
+
+    /****************** Repay tests ******************/
 
     function testBorrowersCanRepayLoan() public createdMarket {
         bytes32 id = syphon.createId(marketParams);
@@ -346,6 +430,44 @@ contract SyphonTest is Test {
         console.log("market borrow assets:", market.totalBorrowAssets);
         console.log("market borrow shares:", market.totalBorrowShares);
     }
+
+    function testInvalidRepayAmount() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(marketParams.loanToken).approve(address(syphon), 5 ether);
+        vm.expectRevert(Syphon.Syphon__InvalidRepayAmount.selector);
+        syphon.repay(marketParams, id, 0 ether, 0);
+        vm.stopPrank();
+    }
+
+    function testAmbiguousRepayInput() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(marketParams.loanToken).approve(address(syphon), 5 ether);
+        vm.expectRevert(Syphon.Syphon__AmbiguousRepayInput.selector);
+        syphon.repay(marketParams, id, 1 ether, 1);
+        vm.stopPrank();
+    }
+
+    /********************* Liquidation tests ***************************/
 
     function testCannotLiquidateHealthyUser() public createdMarket {
         bytes32 id = syphon.createId(marketParams);

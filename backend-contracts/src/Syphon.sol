@@ -13,12 +13,12 @@ contract Syphon is ISyphonBase {
     using Math for uint256;
     /************* Errors ******************/
     error Syphon__InvalidMarketParams();
-    error Syphon__MarketAlredyExists();
+    error Syphon__MarketAlreadyExists();
     error Syphon__InvalidIdOrParams();
     error Syphon__InvalidTokenAddress();
     error Syphon__InvalidAmountEntered();
     error Syphon__SupplyTransferFailed();
-    error Syphon_UserFoundWithNegativeIntereset();
+    error Syphon__UserFoundWithNegativeIntereset();
     error Syphon__InsufficientUserSupply();
     error Syphon__InsufficientMarketSupply();
     error Syphon__CollateralTransferFailed();
@@ -127,7 +127,7 @@ contract Syphon is ISyphonBase {
         ) {
             revert Syphon__InvalidMarketParams();
         } else if (sMarket[id].lastUpdate != 0) {
-            revert Syphon__MarketAlredyExists();
+            revert Syphon__MarketAlreadyExists();
         }
 
         sMarket[id].lastUpdate = uint128(block.timestamp);
@@ -145,6 +145,7 @@ contract Syphon is ISyphonBase {
         external
         idMatchesParams(marketParams, id)
         amountIsZero(amountToSupply)
+        marketExists(id)
     {
         _accrueInterest(marketParams, id);
         if (sMarket[id].totalSupplyAssets == 0) {
@@ -170,7 +171,7 @@ contract Syphon is ISyphonBase {
     function withdraw(MarketParams memory marketParams, bytes32 id, uint256 amountToWithdraw, uint256 sharesToWithdraw)
         external
         idMatchesParams(marketParams, id)
-        checkMarketSupply(id, amountToWithdraw)
+        marketExists(id)
     {
         if (amountToWithdraw == 0 && sharesToWithdraw == 0) {
             revert Syphon__InvalidWithdrawAmount();
@@ -210,6 +211,7 @@ contract Syphon is ISyphonBase {
         external
         idMatchesParams(marketParams, id)
         amountIsZero(collateralAmount)
+        marketExists(id)
     {
         sPositions[id][msg.sender].collateral += collateralAmount;
         bool succes = IERC20(marketParams.collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
@@ -224,6 +226,7 @@ contract Syphon is ISyphonBase {
         external
         idMatchesParams(marketParams, id)
         amountIsZero(collateralToWithdraw)
+        marketExists(id)
     {
         uint256 userHealthFactor = _healthFactor(marketParams, id, msg.sender);
         if (_healthFactor(marketParams, id, msg.sender) < HEALTHFACTOR_PRECISION) {
@@ -290,6 +293,7 @@ contract Syphon is ISyphonBase {
     function repay(MarketParams memory marketParams, bytes32 id, uint256 amountToRepay, uint256 sharesToRepay)
         external
         idMatchesParams(marketParams, id)
+        marketExists(id)
     {
         if (amountToRepay == 0 && sharesToRepay == 0) {
             revert Syphon__InvalidRepayAmount();
