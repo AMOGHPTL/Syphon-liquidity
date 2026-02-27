@@ -7,6 +7,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MockIrm} from "./mocks/MockIrm.sol";
 import {console} from "forge-std/Test.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
 
 contract Syphon is ISyphonBase {
     using Math for uint256;
@@ -33,7 +34,7 @@ contract Syphon is ISyphonBase {
     error Syphon__AmbiguousRepayInput();
     error Syphon__InsufficientShares();
     error Syphon__BadHealthFactor();
-    error Syphon__HealthPosition();
+    error Syphon__HealthyPosition();
     error Syphon__LiquidationLoanFailed();
     error Syphon__IncentiveTransferFailed();
 
@@ -57,6 +58,7 @@ contract Syphon is ISyphonBase {
     uint256 constant OVER_COLLATERALIZED_RATE = 120e15;
     uint256 constant OVER_COLLATERALIZED_PRECISION = 1e18;
     uint256 constant HEALTHFACTOR_PRECISION = 1e18;
+    uint256 constant ORACLE_SCALE_PRECISION = 1e18;
 
     /****************** modifier *******************/
     modifier idMatchesParams(MarketParams memory marketParams, bytes32 id) {
@@ -247,8 +249,13 @@ contract Syphon is ISyphonBase {
         Position memory position = sPositions[id][msg.sender];
         Market memory market = sMarket[id];
 
+        uint256 collateralPrice = IOracle(marketParams.oracle).price();
+
+        uint256 amountToBorrowInCollateralToken = Math.mulDiv(amountToBorrow, ORACLE_SCALE_PRECISION, collateralPrice);
+
         //check if the borrower is over collateralized
-        uint256 requiredCollateral = (amountToBorrow * OVER_COLLATERALIZED_RATE) / OVER_COLLATERALIZED_PRECISION;
+        uint256 requiredCollateral =
+            (amountToBorrowInCollateralToken * OVER_COLLATERALIZED_RATE) / OVER_COLLATERALIZED_PRECISION;
         console.log("required collateral :", requiredCollateral);
         if (position.collateral < requiredCollateral) {
             revert Syphon__UnderCollateralized();
@@ -259,7 +266,7 @@ contract Syphon is ISyphonBase {
 
         if (sMarket[id].totalBorrowAssets == 0) {
             // First ever borrow
-            uint256 shares = amountToBorrow == 0 ? 0 : SHARE_PRECISION; // or amountToBorrow, or 1e18, etc.
+            uint256 shares = amountToBorrow; // or amountToBorrow, or 1e18, etc.
             sMarket[id].totalBorrowShares = shares;
             sMarket[id].totalBorrowAssets = amountToBorrow;
             sPositions[id][msg.sender].borrowShares = shares;
@@ -335,17 +342,19 @@ contract Syphon is ISyphonBase {
         uint256 liquidationIncentive;
         _accrueInterest(marketParams, id);
         if (_healthFactor(marketParams, id, toLiquidate) >= HEALTHFACTOR_PRECISION) {
-            revert Syphon__HealthPosition();
+            revert Syphon__HealthyPosition();
         }
         Market memory market = sMarket[id];
         Position memory position = sPositions[id][toLiquidate];
 
         liquidationIncentive = position.collateral;
+        console.log("liquidation incentive:", liquidationIncentive);
         sharesToBurn = position.borrowShares;
+        console.log("shares to burn", sharesToBurn);
         assetsToBurn = Math.mulDiv(sharesToBurn, market.totalBorrowAssets, market.totalBorrowShares);
-
+        console.log("assets to burn:", assetsToBurn);
         sMarket[id].totalBorrowShares -= sharesToBurn;
-        sMarket[id].totalBorrowShares -= assetsToBurn;
+        sMarket[id].totalBorrowAssets -= assetsToBurn;
         sPositions[id][toLiquidate].borrowShares = 0;
         sPositions[id][toLiquidate].collateral = 0;
 
@@ -371,24 +380,20 @@ contract Syphon is ISyphonBase {
         sMarket[id].totalBorrowAssets += interest;
     }
 
-    function _healthFactor(
-        MarketParams memory,
-        /*marketParmas*/
-        bytes32 id,
-        address user
-    )
-        public
-        view
-        returns (uint256)
-    {
+    function _healthFactor(MarketParams memory marketParams, bytes32 id, address user) public view returns (uint256) {
         Market memory market = sMarket[id];
         Position memory position = sPositions[id][user];
 
         if (market.totalBorrowShares == 0) return type(uint256).max;
 
-        uint256 userSharesValue = Math.mulDiv(position.borrowShares, market.totalBorrowAssets, market.totalBorrowShares);
-        uint256 healthFactor = Math.mulDiv(userSharesValue, HEALTHFACTOR_PRECISION, position.collateral);
+        uint256 collateralPrice = IOracle(marketParams.oracle).price();
+        console.log("collateral price:", collateralPrice);
 
+        uint256 userSharesValue = Math.mulDiv(position.borrowShares, market.totalBorrowAssets, market.totalBorrowShares);
+        console.log("user shares value:", userSharesValue);
+        uint256 collateralValueInLoanToken = Math.mulDiv(position.collateral, ORACLE_SCALE_PRECISION, collateralPrice);
+        console.log("collateral value in loan token:", collateralValueInLoanToken);
+        uint256 healthFactor = Math.mulDiv(collateralValueInLoanToken, HEALTHFACTOR_PRECISION, userSharesValue);
         return healthFactor;
     }
 

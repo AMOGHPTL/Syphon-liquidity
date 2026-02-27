@@ -27,7 +27,7 @@ contract SyphonTest is Test {
         vm.startPrank(OWNER);
         syphon = new Syphon(OWNER);
         irm = new MockIrm();
-        oracle = new MockOracle(1800);
+        oracle = new MockOracle(1e18);
         collateralToken = new ERC20Mock();
         loanToken = new ERC20Mock();
         marketParams = MarketParams({
@@ -298,7 +298,7 @@ contract SyphonTest is Test {
         assertEq(usersinitialPosition.collateral, usersPositionAfterCollateralWithdraw.collateral);
     }
 
-    function testBorrow() public createdMarket {
+    function testBorrowersCanBorrow() public createdMarket {
         bytes32 id = syphon.createId(marketParams);
         vm.startPrank(USER);
         IERC20(loanToken).approve(address(syphon), 20 ether);
@@ -320,7 +320,7 @@ contract SyphonTest is Test {
         console.log("market borrow shares:", market.totalBorrowShares);
     }
 
-    function testRepay() public createdMarket {
+    function testBorrowersCanRepayLoan() public createdMarket {
         bytes32 id = syphon.createId(marketParams);
         vm.startPrank(USER);
         IERC20(loanToken).approve(address(syphon), 20 ether);
@@ -345,5 +345,56 @@ contract SyphonTest is Test {
         console.log("user borrow shares:", position.borrowShares);
         console.log("market borrow assets:", market.totalBorrowAssets);
         console.log("market borrow shares:", market.totalBorrowShares);
+    }
+
+    function testCannotLiquidateHealthyUser() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 20 ether);
+        vm.stopPrank();
+        uint256 userHealthFactor = syphon._healthFactor(marketParams, id, USER);
+        console.log("user health factor:", userHealthFactor);
+        vm.startPrank(USER2);
+        IERC20(marketParams.loanToken).approve(address(syphon), 20 ether);
+        vm.expectRevert();
+        syphon.liquidate(marketParams, id, USER);
+        vm.stopPrank();
+    }
+
+    function testBadUserCanBeLiquidated() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 20 ether);
+        syphon.supply(marketParams, id, 20 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 20 ether);
+        vm.stopPrank();
+        uint256 userHealthFactorBeforeSetPrice = syphon._healthFactor(marketParams, id, USER);
+        console.log("user health factor before set:", userHealthFactorBeforeSetPrice);
+        vm.startPrank(USER2);
+        MockOracle(marketParams.oracle).setPrice(2e18);
+        vm.stopPrank();
+        uint256 userHealthFactorAfterSetPrice = syphon._healthFactor(marketParams, id, USER);
+        console.log("user health factor after set:", userHealthFactorAfterSetPrice);
+
+        vm.startPrank(USER2);
+        IERC20(marketParams.loanToken).approve(address(syphon), 20 ether);
+        syphon.liquidate(marketParams, id, USER);
+        vm.stopPrank();
+        Position memory positonAfterLiquidating = syphon.getUserPosition(id, USER);
+        Market memory marketAfterLiquidation = syphon.getMarketInfo(id);
+        console.log("users collateral after liquiadtion:", positonAfterLiquidating.collateral);
+        console.log("users borrow shares after liquidation:", positonAfterLiquidating.borrowShares);
+        console.log("market borrow assets after liquidation:", marketAfterLiquidation.totalBorrowAssets);
+        console.log("market borrow shares after liquidation:", marketAfterLiquidation.totalBorrowShares);
     }
 }
