@@ -31,6 +31,8 @@ contract Syphon is ISyphonBase {
     error Syphon__InvalidRepayAmount();
     error Syphon__RepayTransferFailed();
     error Syphon__AmbiguousRepayInput();
+    error Syphon__InsufficientShares();
+    error Syphon__BadHealthFactor();
 
     /************ Events ******************/
     event MarketCreated(bytes32 indexed id, MarketParams marketParams);
@@ -50,6 +52,7 @@ contract Syphon is ISyphonBase {
     uint256 constant SHARE_PRECISION = 1e18;
     uint256 constant OVER_COLLATERALIZED_RATE = 120e15;
     uint256 constant OVER_COLLATERALIZED_PRECISION = 1e18;
+    uint256 constant HEALTHFACTOR_PRECISION = 1e18;
 
     /****************** modifier *******************/
     modifier idMatchesParams(MarketParams memory marketParams, bytes32 id) {
@@ -140,18 +143,16 @@ contract Syphon is ISyphonBase {
         _accrueInterest(marketParams, id);
         if (sMarket[id].totalSupplyAssets == 0) {
             // First ever supply
-            uint256 shares = amountToSupply == 0 ? 0 : SHARE_PRECISION; // or amountToSupply, or 1e18, etc.
+            uint256 shares = amountToSupply; // or amountToSupply, or 1e18, etc.
             sMarket[id].totalSupplyShares = shares;
             sMarket[id].totalSupplyAssets = amountToSupply;
             sPositions[id][msg.sender].supplyShares = shares;
         } else {
-            uint256 shares = amountToSupply.mulDiv(SHARE_PRECISION, sMarket[id].totalSupplyAssets);
+            uint256 shares = amountToSupply.mulDiv(sMarket[id].totalSupplyShares, sMarket[id].totalSupplyAssets);
             sMarket[id].totalSupplyShares += shares;
             sMarket[id].totalSupplyAssets += amountToSupply;
             sPositions[id][msg.sender].supplyShares += shares;
         }
-
-        sMarket[id].lastUpdate = block.timestamp;
 
         bool success = IERC20(marketParams.loanToken).transferFrom(msg.sender, address(this), amountToSupply);
         if (!success) {
@@ -175,8 +176,11 @@ contract Syphon is ISyphonBase {
         if (amountToWithdraw == 0) {
             sharesToBurn = sharesToWithdraw;
         } else {
-            sharesToBurn =
-            ((sPositions[id][msg.sender].supplyShares * amountToWithdraw) / sMarket[id].totalSupplyAssets);
+            sharesToBurn = Math.mulDiv(amountToWithdraw, sMarket[id].totalSupplyShares, sMarket[id].totalSupplyAssets);
+        }
+
+        if (sharesToBurn > sPositions[id][msg.sender].supplyShares) {
+            revert Syphon__InsufficientShares();
         }
         amountToGive = Math.mulDiv(sharesToBurn, sMarket[id].totalSupplyAssets, sMarket[id].totalSupplyShares);
         console.log("user supply shares while withdraw:", sPositions[id][msg.sender].supplyShares);
@@ -189,7 +193,7 @@ contract Syphon is ISyphonBase {
             revert Syphon__WithdrwalFailed();
         }
 
-        emit withdrawn(id, marketParams.loanToken, amountToWithdraw);
+        emit withdrawn(id, marketParams.loanToken, amountToGive);
     }
 
     /**
@@ -215,6 +219,11 @@ contract Syphon is ISyphonBase {
         idMatchesParams(marketParams, id)
         amountIsZero(collateralToWithdraw)
     {
+        uint256 userHealthFactor = _healthFactor(marketParams, id, msg.sender);
+        if (_healthFactor(marketParams, id, msg.sender) < HEALTHFACTOR_PRECISION) {
+            revert Syphon__BadHealthFactor();
+        }
+        console.log("user health factor:", userHealthFactor);
         Position memory position = sPositions[id][msg.sender];
         sPositions[id][msg.sender].collateral -= collateralToWithdraw;
         bool succes = IERC20(marketParams.collateralToken).transfer(msg.sender, collateralToWithdraw);
@@ -330,6 +339,18 @@ contract Syphon is ISyphonBase {
 
         sMarket[id].totalSupplyAssets += interest;
         sMarket[id].totalBorrowAssets += interest;
+    }
+
+    function _healthFactor(MarketParams memory marketParmas, bytes32 id, address user) public returns (uint256) {
+        Market memory market = sMarket[id];
+        Position memory position = sPositions[id][user];
+
+        if (market.totalBorrowShares == 0) return type(uint256).max;
+
+        uint256 userSharesValue = Math.mulDiv(position.borrowShares, market.totalBorrowAssets, market.totalBorrowShares);
+        uint256 healthFactor = Math.mulDiv(userSharesValue, HEALTHFACTOR_PRECISION, position.collateral);
+
+        return healthFactor;
     }
 
     ////////////////////**********************getter functions*********//////////////////////
