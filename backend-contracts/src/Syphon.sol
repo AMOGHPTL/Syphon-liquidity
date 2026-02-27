@@ -33,6 +33,9 @@ contract Syphon is ISyphonBase {
     error Syphon__AmbiguousRepayInput();
     error Syphon__InsufficientShares();
     error Syphon__BadHealthFactor();
+    error Syphon__HealthPosition();
+    error Syphon__LiquidationLoanFailed();
+    error Syphon__IncentiveTransferFailed();
 
     /************ Events ******************/
     event MarketCreated(bytes32 indexed id, MarketParams marketParams);
@@ -42,6 +45,7 @@ contract Syphon is ISyphonBase {
     event collateralWithdrawn(bytes32 id, address collateralToken, uint256 indexed collateralToWithdraw);
     event borrowed(bytes32 id, address loanToken, uint256 indexed borrowAmount);
     event repayed(bytes32 id, uint256 indexed sharesRepayed, uint256 repayAmount);
+    event liquidated(address indexed liquidatedAddress, address liquidator, uint256 incentive);
 
     /*************** variables *********************/
     address private owner;
@@ -224,7 +228,6 @@ contract Syphon is ISyphonBase {
             revert Syphon__BadHealthFactor();
         }
         console.log("user health factor:", userHealthFactor);
-        Position memory position = sPositions[id][msg.sender];
         sPositions[id][msg.sender].collateral -= collateralToWithdraw;
         bool succes = IERC20(marketParams.collateralToken).transfer(msg.sender, collateralToWithdraw);
         if (!succes) {
@@ -322,14 +325,41 @@ contract Syphon is ISyphonBase {
     /**
      * liquidation functions
      */
-    function liquidate(
-        MarketParams memory marketParams,
-        bytes32 id,
-        address toLiquidate,
-        address collateralToken,
-        address loanToken,
-        uint256 repayAmout
-    ) external idMatchesParams(marketParams, id) {}
+    function liquidate(MarketParams memory marketParams, bytes32 id, address toLiquidate)
+        external
+        idMatchesParams(marketParams, id)
+        marketExists(id)
+    {
+        uint256 sharesToBurn;
+        uint256 assetsToBurn;
+        uint256 liquidationIncentive;
+        _accrueInterest(marketParams, id);
+        if (_healthFactor(marketParams, id, toLiquidate) >= HEALTHFACTOR_PRECISION) {
+            revert Syphon__HealthPosition();
+        }
+        Market memory market = sMarket[id];
+        Position memory position = sPositions[id][toLiquidate];
+
+        liquidationIncentive = position.collateral;
+        sharesToBurn = position.borrowShares;
+        assetsToBurn = Math.mulDiv(sharesToBurn, market.totalBorrowAssets, market.totalBorrowShares);
+
+        sMarket[id].totalBorrowShares -= sharesToBurn;
+        sMarket[id].totalBorrowShares -= assetsToBurn;
+        sPositions[id][toLiquidate].borrowShares = 0;
+        sPositions[id][toLiquidate].collateral = 0;
+
+        bool loanPayback = IERC20(marketParams.loanToken).transferFrom(msg.sender, address(this), assetsToBurn);
+        if (!loanPayback) {
+            revert Syphon__LiquidationLoanFailed();
+        }
+        bool incentiveTransfer = IERC20(marketParams.collateralToken).transfer(msg.sender, liquidationIncentive);
+        if (!incentiveTransfer) {
+            revert Syphon__IncentiveTransferFailed();
+        }
+
+        emit liquidated(toLiquidate, msg.sender, liquidationIncentive);
+    }
 
     function _accrueInterest(MarketParams memory marketParams, bytes32 id) public {
         uint256 elapsed = block.timestamp - sMarket[id].lastUpdate;
@@ -341,7 +371,16 @@ contract Syphon is ISyphonBase {
         sMarket[id].totalBorrowAssets += interest;
     }
 
-    function _healthFactor(MarketParams memory marketParmas, bytes32 id, address user) public returns (uint256) {
+    function _healthFactor(
+        MarketParams memory,
+        /*marketParmas*/
+        bytes32 id,
+        address user
+    )
+        public
+        view
+        returns (uint256)
+    {
         Market memory market = sMarket[id];
         Position memory position = sPositions[id][user];
 

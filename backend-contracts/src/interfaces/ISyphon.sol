@@ -50,12 +50,5 @@ interface ISyphonBase {
     /**
      * liquidation functions
      */
-    function liquidate(
-        MarketParams memory marketParams,
-        bytes32 id,
-        address toLiquidate,
-        address collateralToken,
-        address loanToken,
-        uint256 repayAmout
-    ) external;
+    function liquidate(MarketParams memory marketParams, bytes32 id, address toLiquidate) external;
 }
