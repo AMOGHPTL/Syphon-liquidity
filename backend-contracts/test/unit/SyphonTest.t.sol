@@ -298,22 +298,6 @@ contract SyphonTest is Test {
         vm.stopPrank();
     }
 
-    /*************** Accrue Interset test **************** */
-
-    function testAccrueInterest() public createdMarket {
-        bytes32 id = syphon.createId(marketParams);
-        vm.startPrank(USER);
-        IERC20(loanToken).approve(address(syphon), 20 ether);
-        syphon.supply(marketParams, id, 20 ether);
-        vm.stopPrank();
-        Market memory afterMarket = syphon.getMarketInfo(id);
-        console.log("after supply market assets:", afterMarket.totalSupplyAssets);
-        vm.warp(block.timestamp + 1);
-        syphon._accrueInterest(marketParams, id);
-        Market memory marketAfterIntrest = syphon.getMarketInfo(id);
-        console.log("market assets after interest:", marketAfterIntrest.totalSupplyAssets);
-    }
-
     /******************* Supply collateral tests ******************/
 
     function testBorrowerCanSupplyCollateral() public createdMarket {
@@ -431,6 +415,34 @@ contract SyphonTest is Test {
         console.log("market borrow shares:", market.totalBorrowShares);
     }
 
+    function testBorrowersRepayWithInterest() public createdMarket {
+        bytes32 id = syphon.createId(marketParams);
+        vm.startPrank(USER);
+        IERC20(loanToken).approve(address(syphon), 80 ether);
+        syphon.supply(marketParams, id, 80 ether);
+        vm.stopPrank();
+        vm.startPrank(USER);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+        vm.startPrank(USER2);
+        IERC20(collateralToken).approve(address(syphon), 20 ether);
+        syphon.supplyCollateral(marketParams, id, 20 ether);
+        syphon.borrow(marketParams, id, 10 ether);
+        vm.stopPrank();
+        vm.warp(block.timestamp + 365 days);
+        vm.startPrank(USER);
+        IERC20(marketParams.loanToken).approve(address(syphon), 5 ether);
+        syphon.repay(marketParams, id, 2 ether, 0);
+        vm.stopPrank();
+        Position memory position = syphon.getUserPosition(id, USER);
+        Market memory market = syphon.getMarketInfo(id);
+        console.log("user borrow shares:", position.borrowShares);
+        console.log("market borrow assets:", market.totalBorrowAssets);
+        console.log("market borrow shares:", market.totalBorrowShares);
+    }
+
     function testInvalidRepayAmount() public createdMarket {
         bytes32 id = syphon.createId(marketParams);
         vm.startPrank(USER);
@@ -476,8 +488,8 @@ contract SyphonTest is Test {
         syphon.supply(marketParams, id, 20 ether);
         vm.stopPrank();
         vm.startPrank(USER);
-        IERC20(collateralToken).approve(address(syphon), 20 ether);
-        syphon.supplyCollateral(marketParams, id, 20 ether);
+        IERC20(collateralToken).approve(address(syphon), 24 ether);
+        syphon.supplyCollateral(marketParams, id, 24 ether);
         syphon.borrow(marketParams, id, 20 ether);
         vm.stopPrank();
         uint256 userHealthFactor = syphon._healthFactor(marketParams, id, USER);
@@ -496,8 +508,8 @@ contract SyphonTest is Test {
         syphon.supply(marketParams, id, 20 ether);
         vm.stopPrank();
         vm.startPrank(USER);
-        IERC20(collateralToken).approve(address(syphon), 20 ether);
-        syphon.supplyCollateral(marketParams, id, 20 ether);
+        IERC20(collateralToken).approve(address(syphon), 24 ether);
+        syphon.supplyCollateral(marketParams, id, 24 ether);
         syphon.borrow(marketParams, id, 20 ether);
         vm.stopPrank();
         uint256 userHealthFactorBeforeSetPrice = syphon._healthFactor(marketParams, id, USER);

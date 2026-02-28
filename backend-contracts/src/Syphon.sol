@@ -9,11 +9,12 @@ import {console} from "forge-std/Test.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract Syphon is ISyphonBase {
+contract Syphon is ISyphonBase, ReentrancyGuard {
     using Math for uint256;
     using SafeERC20 for IERC20;
-    /************* Errors ******************/
+
     error Syphon__InvalidMarketParams();
     error Syphon__MarketAlreadyExists();
     error Syphon__InvalidIdOrParams();
@@ -40,7 +41,6 @@ contract Syphon is ISyphonBase {
     error Syphon__LiquidationLoanFailed();
     error Syphon__IncentiveTransferFailed();
 
-    /************ Events ******************/
     event MarketCreated(bytes32 indexed id, MarketParams marketParams);
     event Supplied(bytes32 id, address supplyToken, uint256 indexed amountToSupply);
     event withdrawn(bytes32 id, address withdrawToken, uint256 indexed amountToWithdraw);
@@ -50,19 +50,18 @@ contract Syphon is ISyphonBase {
     event repayed(bytes32 id, uint256 indexed sharesRepayed, uint256 repayAmount);
     event liquidated(address indexed liquidatedAddress, address liquidator, uint256 incentive);
 
-    /*************** variables *********************/
     address private owner;
     mapping(bytes32 id => Market) sMarket;
     mapping(bytes32 id => MarketParams marketParams) sIdToMarketParam;
     mapping(bytes32 id => mapping(address => Position)) sPositions;
     bytes32[] sMarketIds;
     uint256 constant SHARE_PRECISION = 1e18;
-    uint256 constant OVER_COLLATERALIZED_RATE = 120e15;
+    uint256 constant OVER_COLLATERALIZED_RATE = 120e16;
     uint256 constant OVER_COLLATERALIZED_PRECISION = 1e18;
     uint256 constant HEALTHFACTOR_PRECISION = 1e18;
     uint256 constant ORACLE_SCALE_PRECISION = 1e18;
+    uint256 constant INTEREST_PRECISION = 1e18;
 
-    /****************** modifier *******************/
     modifier idMatchesParams(MarketParams memory marketParams, bytes32 id) {
         bytes32 expectedId = createId(marketParams);
         if (expectedId != id) {
@@ -109,14 +108,9 @@ contract Syphon is ISyphonBase {
         _;
     }
 
-    /***************** functions********** */
-
-    /***************** constructor********** */
     constructor(address initialOwner) {
         owner = initialOwner;
     }
-
-    /************* Exteranl functions *********/
 
     function createId(MarketParams memory marketParams) public pure returns (bytes32) {
         return keccak256(abi.encode(marketParams));
@@ -140,19 +134,16 @@ contract Syphon is ISyphonBase {
         emit MarketCreated(id, marketParams);
     }
 
-    /**
-     * lenders functions
-     */
     function supply(MarketParams memory marketParams, bytes32 id, uint256 amountToSupply)
         external
+        nonReentrant
         idMatchesParams(marketParams, id)
         amountIsZero(amountToSupply)
         marketExists(id)
     {
         _accrueInterest(marketParams, id);
         if (sMarket[id].totalSupplyAssets == 0) {
-            // First ever supply
-            uint256 shares = amountToSupply; // or amountToSupply, or 1e18, etc.
+            uint256 shares = amountToSupply;
             sMarket[id].totalSupplyShares = shares;
             sMarket[id].totalSupplyAssets = amountToSupply;
             sPositions[id][msg.sender].supplyShares = shares;
@@ -170,6 +161,7 @@ contract Syphon is ISyphonBase {
 
     function withdraw(MarketParams memory marketParams, bytes32 id, uint256 amountToWithdraw, uint256 sharesToWithdraw)
         external
+        nonReentrant
         idMatchesParams(marketParams, id)
         marketExists(id)
     {
@@ -200,16 +192,14 @@ contract Syphon is ISyphonBase {
         emit withdrawn(id, marketParams.loanToken, amountToGive);
     }
 
-    /**
-     * borrowers functions
-     */
-
     function supplyCollateral(MarketParams memory marketParams, bytes32 id, uint256 collateralAmount)
         external
+        nonReentrant
         idMatchesParams(marketParams, id)
         amountIsZero(collateralAmount)
         marketExists(id)
     {
+        _accrueInterest(marketParams, id);
         sPositions[id][msg.sender].collateral += collateralAmount;
         IERC20(marketParams.collateralToken).safeTransferFrom(msg.sender, address(this), collateralAmount);
 
@@ -218,16 +208,18 @@ contract Syphon is ISyphonBase {
 
     function withdrawCollateral(MarketParams memory marketParams, bytes32 id, uint256 collateralToWithdraw)
         external
+        nonReentrant
         idMatchesParams(marketParams, id)
         amountIsZero(collateralToWithdraw)
         marketExists(id)
     {
-        uint256 userHealthFactor = _healthFactor(marketParams, id, msg.sender);
+        _accrueInterest(marketParams, id);
+        sPositions[id][msg.sender].collateral -= collateralToWithdraw;
+
         if (_healthFactor(marketParams, id, msg.sender) < HEALTHFACTOR_PRECISION) {
             revert Syphon__BadHealthFactor();
         }
-        console.log("user health factor:", userHealthFactor);
-        sPositions[id][msg.sender].collateral -= collateralToWithdraw;
+
         IERC20(marketParams.collateralToken).safeTransfer(msg.sender, collateralToWithdraw);
 
         emit collateralWithdrawn(id, marketParams.collateralToken, collateralToWithdraw);
@@ -235,6 +227,7 @@ contract Syphon is ISyphonBase {
 
     function borrow(MarketParams memory marketParams, bytes32 id, uint256 amountToBorrow)
         external
+        nonReentrant
         idMatchesParams(marketParams, id)
         amountIsZero(amountToBorrow)
         marketExists(id)
@@ -247,7 +240,6 @@ contract Syphon is ISyphonBase {
 
         uint256 amountToBorrowInCollateralToken = Math.mulDiv(amountToBorrow, ORACLE_SCALE_PRECISION, collateralPrice);
 
-        //check if the borrower is over collateralized
         uint256 requiredCollateral =
             (amountToBorrowInCollateralToken * OVER_COLLATERALIZED_RATE) / OVER_COLLATERALIZED_PRECISION;
         console.log("required collateral :", requiredCollateral);
@@ -259,18 +251,18 @@ contract Syphon is ISyphonBase {
         }
 
         if (sMarket[id].totalBorrowAssets == 0) {
-            // First ever borrow
-            uint256 shares = amountToBorrow; // or amountToBorrow, or 1e18, etc.
+            uint256 shares = amountToBorrow;
             sMarket[id].totalBorrowShares = shares;
             sMarket[id].totalBorrowAssets = amountToBorrow;
             sPositions[id][msg.sender].borrowShares = shares;
         } else {
-            uint256 shares = amountToBorrow.mulDiv(SHARE_PRECISION, sMarket[id].totalBorrowAssets);
+            uint256 shares = amountToBorrow.mulDiv(sMarket[id].totalBorrowShares, sMarket[id].totalBorrowAssets);
             sMarket[id].totalBorrowShares += shares;
             sMarket[id].totalBorrowAssets += amountToBorrow;
             sPositions[id][msg.sender].borrowShares += shares;
         }
 
+        sMarket[id].totalSupplyAssets -= amountToBorrow;
         sMarket[id].lastUpdate = block.timestamp;
 
         IERC20(marketParams.loanToken).safeTransfer(msg.sender, amountToBorrow);
@@ -280,6 +272,7 @@ contract Syphon is ISyphonBase {
 
     function repay(MarketParams memory marketParams, bytes32 id, uint256 amountToRepay, uint256 sharesToRepay)
         external
+        nonReentrant
         idMatchesParams(marketParams, id)
         marketExists(id)
     {
@@ -312,17 +305,16 @@ contract Syphon is ISyphonBase {
 
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= repayAmount;
+        sMarket[id].totalSupplyAssets += repayAmount;
         sPositions[id][msg.sender].borrowShares -= sharesToBurn;
         IERC20(marketParams.loanToken).safeTransferFrom(msg.sender, address(this), repayAmount);
 
         emit repayed(id, sharesToBurn, repayAmount);
     }
 
-    /**
-     * liquidation functions
-     */
     function liquidate(MarketParams memory marketParams, bytes32 id, address toLiquidate)
         external
+        nonReentrant
         idMatchesParams(marketParams, id)
         marketExists(id)
     {
@@ -344,6 +336,7 @@ contract Syphon is ISyphonBase {
         console.log("assets to burn:", assetsToBurn);
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= assetsToBurn;
+        sMarket[id].totalSupplyAssets += assetsToBurn;
         sPositions[id][toLiquidate].borrowShares = 0;
         sPositions[id][toLiquidate].collateral = 0;
 
@@ -354,21 +347,26 @@ contract Syphon is ISyphonBase {
         emit liquidated(toLiquidate, msg.sender, liquidationIncentive);
     }
 
-    function _accrueInterest(MarketParams memory marketParams, bytes32 id) public {
+    function _accrueInterest(MarketParams memory marketParams, bytes32 id) internal {
         uint256 elapsed = block.timestamp - sMarket[id].lastUpdate;
+        if (elapsed == 0) return;
+        if (sMarket[id].totalBorrowAssets == 0) {
+            sMarket[id].lastUpdate = block.timestamp;
+            return;
+        }
         uint256 borrowRate = MockIrm(marketParams.irm).borrowRate(sMarket[id]);
-        uint256 dailyBorrowRate = borrowRate / 365;
-        uint256 interest = dailyBorrowRate * sMarket[id].totalBorrowAssets * elapsed;
+        uint256 interest = borrowRate.mulDiv(sMarket[id].totalBorrowAssets * elapsed, 365 days * INTEREST_PRECISION);
 
         sMarket[id].totalSupplyAssets += interest;
         sMarket[id].totalBorrowAssets += interest;
+        sMarket[id].lastUpdate = block.timestamp;
     }
 
     function _healthFactor(MarketParams memory marketParams, bytes32 id, address user) public view returns (uint256) {
         Market memory market = sMarket[id];
         Position memory position = sPositions[id][user];
 
-        if (market.totalBorrowShares == 0) return type(uint256).max;
+        if (position.borrowShares == 0) return type(uint256).max;
 
         uint256 collateralPrice = IOracle(marketParams.oracle).price();
         console.log("collateral price:", collateralPrice);
@@ -381,7 +379,6 @@ contract Syphon is ISyphonBase {
         return healthFactor;
     }
 
-    ////////////////////**********************getter functions*********//////////////////////
     function getMarkets() public view returns (bytes32[] memory) {
         return sMarketIds;
     }
