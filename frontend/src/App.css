@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+html{
+background:
+  radial-gradient(circle at 70% 20%, rgba(120, 80, 255, 0.15), transparent 40%),
+  linear-gradient(135deg, #0f0c29, #1b1a3a, #2e2a6e, #1f3c88);
+color: white;
+overflow-x: hidden;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  animation: scroll 20s linear infinite;
+    width: max-content;
+}
