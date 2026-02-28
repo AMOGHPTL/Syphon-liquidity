@@ -8,9 +8,11 @@ import {MockIrm} from "./mocks/MockIrm.sol";
 import {console} from "forge-std/Test.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract Syphon is ISyphonBase {
     using Math for uint256;
+    using SafeERC20 for IERC20;
     /************* Errors ******************/
     error Syphon__InvalidMarketParams();
     error Syphon__MarketAlreadyExists();
@@ -161,10 +163,8 @@ contract Syphon is ISyphonBase {
             sPositions[id][msg.sender].supplyShares += shares;
         }
 
-        bool success = IERC20(marketParams.loanToken).transferFrom(msg.sender, address(this), amountToSupply);
-        if (!success) {
-            revert Syphon__SupplyTransferFailed();
-        }
+        IERC20(marketParams.loanToken).safeTransferFrom(msg.sender, address(this), amountToSupply);
+
         emit Supplied(id, marketParams.loanToken, amountToSupply);
     }
 
@@ -195,10 +195,7 @@ contract Syphon is ISyphonBase {
         sMarket[id].totalSupplyAssets -= amountToGive;
         sPositions[id][msg.sender].supplyShares -= sharesToBurn;
         sMarket[id].totalSupplyShares -= sharesToBurn;
-        bool success = IERC20(marketParams.loanToken).transfer(msg.sender, amountToGive);
-        if (!success) {
-            revert Syphon__WithdrwalFailed();
-        }
+        IERC20(marketParams.loanToken).safeTransfer(msg.sender, amountToGive);
 
         emit withdrawn(id, marketParams.loanToken, amountToGive);
     }
@@ -214,10 +211,7 @@ contract Syphon is ISyphonBase {
         marketExists(id)
     {
         sPositions[id][msg.sender].collateral += collateralAmount;
-        bool succes = IERC20(marketParams.collateralToken).transferFrom(msg.sender, address(this), collateralAmount);
-        if (!succes) {
-            revert Syphon__CollateralTransferFailed();
-        }
+        IERC20(marketParams.collateralToken).safeTransferFrom(msg.sender, address(this), collateralAmount);
 
         emit collateralSupplied(id, marketParams.collateralToken, collateralAmount);
     }
@@ -234,10 +228,7 @@ contract Syphon is ISyphonBase {
         }
         console.log("user health factor:", userHealthFactor);
         sPositions[id][msg.sender].collateral -= collateralToWithdraw;
-        bool succes = IERC20(marketParams.collateralToken).transfer(msg.sender, collateralToWithdraw);
-        if (!succes) {
-            revert Syphon__CollateralWithdrawFailed();
-        }
+        IERC20(marketParams.collateralToken).safeTransfer(msg.sender, collateralToWithdraw);
 
         emit collateralWithdrawn(id, marketParams.collateralToken, collateralToWithdraw);
     }
@@ -282,10 +273,7 @@ contract Syphon is ISyphonBase {
 
         sMarket[id].lastUpdate = block.timestamp;
 
-        bool success = IERC20(marketParams.loanToken).transfer(msg.sender, amountToBorrow);
-        if (!success) {
-            revert Syphon__BorrowTransferFailed();
-        }
+        IERC20(marketParams.loanToken).safeTransfer(msg.sender, amountToBorrow);
 
         emit borrowed(id, marketParams.loanToken, amountToBorrow);
     }
@@ -325,10 +313,7 @@ contract Syphon is ISyphonBase {
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= repayAmount;
         sPositions[id][msg.sender].borrowShares -= sharesToBurn;
-        bool success = IERC20(marketParams.loanToken).transferFrom(msg.sender, address(this), repayAmount);
-        if (!success) {
-            revert Syphon__RepayTransferFailed();
-        }
+        IERC20(marketParams.loanToken).safeTransferFrom(msg.sender, address(this), repayAmount);
 
         emit repayed(id, sharesToBurn, repayAmount);
     }
@@ -362,14 +347,9 @@ contract Syphon is ISyphonBase {
         sPositions[id][toLiquidate].borrowShares = 0;
         sPositions[id][toLiquidate].collateral = 0;
 
-        bool loanPayback = IERC20(marketParams.loanToken).transferFrom(msg.sender, address(this), assetsToBurn);
-        if (!loanPayback) {
-            revert Syphon__LiquidationLoanFailed();
-        }
-        bool incentiveTransfer = IERC20(marketParams.collateralToken).transfer(msg.sender, liquidationIncentive);
-        if (!incentiveTransfer) {
-            revert Syphon__IncentiveTransferFailed();
-        }
+        IERC20(marketParams.loanToken).safeTransferFrom(msg.sender, address(this), assetsToBurn);
+
+        IERC20(marketParams.collateralToken).safeTransfer(msg.sender, liquidationIncentive);
 
         emit liquidated(toLiquidate, msg.sender, liquidationIncentive);
     }
