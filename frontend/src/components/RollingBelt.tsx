@@ -18,12 +18,12 @@ const slides: Slide[] = [
 
 export default function RollingBelt() {
   return (
-    <div className="relative w-full overflow-hidde py-6">
-      <div className="flex whitespace-nowrap animate-scroll">
+    <div className="relative w-full overflow-hidden py-6">
+      <div className="flex gap-8 whitespace-nowrap animate-scroll min-w-max">
         {[...slides, ...slides].map((slide, index) => (
           <div
             key={index}
-            className="flex flex-col items-center bg-black px-10 py-6 w-[300px] rounded-[16px] border border-gray-500 gap-6 mx-4 shrink-0"
+            className="flex flex-col items-center bg-black px-10 py-6 w-[300px] rounded-[16px] border border-gray-500 gap-6 shrink-0"
           >
             <img src={slide.img} alt="" className="w-[56px]" />
             <p className="text-[24px]">{slide.text}</p>

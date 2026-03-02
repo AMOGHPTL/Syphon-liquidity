@@ -1,8 +1,11 @@
+import { useNavigate } from "react-router-dom";
 import logo from "../assets/icons/pool-sports-swimmer-svgrepo-com.svg";
 import RollingBelt from "../components/RollingBelt";
 import CyclingCards from "../components/RollingBelt";
+import NavBtn from "../components/low-level/NavBtn";
 
 const LandingPage = () => {
+  const navigate = useNavigate();
   return (
     <div className="flex flex-col items-center py-[32px]">
       <div className="flex flex-col gap-[72px] items-center max-w-[50%]">
@@ -22,9 +25,7 @@ const LandingPage = () => {
           </p>
         </div>
         <div>
-          <button className="px-[16px] py-[12px] cursor-pointer rounded-full bg-blue-600">
-            Launch App
-          </button>
+          <NavBtn to="/markets" text="Launch app" />
         </div>
         <div>
           <RollingBelt />
