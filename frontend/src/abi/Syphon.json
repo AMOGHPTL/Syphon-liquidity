@@ -1,0 +1,1033 @@
+[
+    {
+        "type": "constructor",
+        "inputs": [
+            {
+                "name": "initialOwner",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "_healthFactor",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "user",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "borrow",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "amountToBorrow",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "createId",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "stateMutability": "pure"
+    },
+    {
+        "type": "function",
+        "name": "createMarket",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "getMarketInfo",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "tuple",
+                "internalType": "struct Market",
+                "components": [
+                    {
+                        "name": "totalSupplyAssets",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "totalSupplyShares",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "totalBorrowAssets",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "totalBorrowShares",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "lastUpdate",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "fee",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getMarketParams",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getMarkets",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes32[]",
+                "internalType": "bytes32[]"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getUserPosition",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "user",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "tuple",
+                "internalType": "struct Position",
+                "components": [
+                    {
+                        "name": "supplyShares",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "borrowShares",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    },
+                    {
+                        "name": "collateral",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "liquidate",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "toLiquidate",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "repay",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "amountToRepay",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "sharesToRepay",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "supply",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "amountToSupply",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "supplyCollateral",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "collateralAmount",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "withdraw",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "amountToWithdraw",
+                "type": "uint256",
+                "internalType": "uint256"
+            },
+            {
+                "name": "sharesToWithdraw",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "withdrawCollateral",
+        "inputs": [
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            },
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "collateralToWithdraw",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "event",
+        "name": "MarketCreated",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "marketParams",
+                "type": "tuple",
+                "indexed": false,
+                "internalType": "struct MarketParams",
+                "components": [
+                    {
+                        "name": "collateralToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "loanToken",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "oracle",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "irm",
+                        "type": "address",
+                        "internalType": "address"
+                    },
+                    {
+                        "name": "lltv",
+                        "type": "uint256",
+                        "internalType": "uint256"
+                    }
+                ]
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "Supplied",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "supplyToken",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "amountToSupply",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "borrowed",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "loanToken",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "borrowAmount",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "collateralSupplied",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "collateralToken",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "collateralAmount",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "collateralWithdrawn",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "collateralToken",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "collateralToWithdraw",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "liquidated",
+        "inputs": [
+            {
+                "name": "liquidatedAddress",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "liquidator",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "incentive",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "repayed",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "sharesRepayed",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            },
+            {
+                "name": "repayAmount",
+                "type": "uint256",
+                "indexed": false,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "withdrawn",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "indexed": false,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "withdrawToken",
+                "type": "address",
+                "indexed": false,
+                "internalType": "address"
+            },
+            {
+                "name": "amountToWithdraw",
+                "type": "uint256",
+                "indexed": true,
+                "internalType": "uint256"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "error",
+        "name": "ReentrancyGuardReentrantCall",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "SafeERC20FailedOperation",
+        "inputs": [
+            {
+                "name": "token",
+                "type": "address",
+                "internalType": "address"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "Syphon__AmbiguousRepayInput",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__BadHealthFactor",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__BorrowTransferFailed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__CollateralTransferFailed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__CollateralWithdrawFailed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__HealthyPosition",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__IncentiveTransferFailed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InsufficientLoanSupply",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InsufficientMarketSupply",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InsufficientShares",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InsufficientUserSupply",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InvalidAmountEntered",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InvalidIdOrParams",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InvalidMarketParams",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InvalidRepayAmount",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InvalidTokenAddress",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__InvalidWithdrawAmount",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__LiquidationLoanFailed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__MarketAlreadyExists",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__MarketDoesNotExits",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__RepayTransferFailed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__SupplyTransferFailed",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__UnderCollateralized",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__UserFoundWithNegativeIntereset",
+        "inputs": []
+    },
+    {
+        "type": "error",
+        "name": "Syphon__WithdrwalFailed",
+        "inputs": []
+    }
+]
