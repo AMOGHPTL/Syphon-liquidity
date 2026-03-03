@@ -390,4 +390,8 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
     function getUserPosition(bytes32 id, address user) public view returns (Position memory) {
         return sPositions[id][user];
     }
+
+    function getMarketParams(bytes32 id) public view returns (MarketParams memory) {
+        return sIdToMarketParam[id];
+    }
 }
