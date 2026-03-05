@@ -13,6 +13,7 @@ import { useChainId } from "wagmi";
 import Input from "../components/Input.js";
 import { useEffect, useState } from "react";
 import { formatEther } from "viem";
+import toast from "react-hot-toast";
 
 const SupplyPage = () => {
   const [supplyAmount, setSupplyAmount] = useState<bigint>(0n);
@@ -26,7 +27,7 @@ const SupplyPage = () => {
   const contractAddresses = syphonAddresses as Record<number, string>;
   const syphonAddress = contractAddresses[chainId];
 
-  const { supply, isSuccess } = useSupply(syphonAddress);
+  const { supply, isSuccess, error } = useSupply(syphonAddress);
 
   const {
     marketInfo,
@@ -73,8 +74,30 @@ const SupplyPage = () => {
   useEffect(() => {
     if (isSuccess) {
       navigate(`/markets/market/${id}`);
+      toast.success(`$${formatEther(supplyAmount)} supplied succesfully`);
     }
   }, [isSuccess]);
+
+  useEffect(() => {
+    if (error) {
+      const raw = error.message;
+
+      const match =
+        raw.match(/Syphon__\w+/)?.[0] ||
+        raw.match(/reverted with reason string '(.+?)'/)?.[1] ||
+        raw.match(/execution reverted: (.+?)(?:\n|$)/)?.[1];
+
+      const message = match
+        ? match
+            .replace("Syphon__", "")
+            .replace(/([A-Z])/g, " $1")
+            .trim()
+        : "Transaction failed";
+
+      toast.error(message);
+      setSupplyAmount(0n);
+    }
+  }, [error]);
 
   return (
     <div className="flex flex-col gap-[48px]">
@@ -109,7 +132,7 @@ const SupplyPage = () => {
           <button
             disabled={supplyAmount === 0n}
             onClick={() => supply(marketParams, id, supplyAmount)}
-            className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl disabled:bg-gray-600 disabled:cursor-not-allowed"
+            className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
             Supply
           </button>

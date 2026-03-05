@@ -3,6 +3,7 @@ import { useChainId } from "wagmi";
 import syphonAddresses from "../abi/SyphonAddresses.json";
 import { useGetSyphonMarketIds } from "../hooks/Syphon.js";
 import MarketInfoTab from "../components/MarketInfoTab.js";
+import type { Hex } from "viem";
 
 const MarketsPage = () => {
   const chainId = useChainId();
@@ -32,7 +33,7 @@ const MarketsPage = () => {
           <div className="w-[32px]"></div>
         </div>
         <div className="flex flex-col gap-[24px] p-[24px]">
-          {markets.map((market: string) => (
+          {markets.map((market: Hex) => (
             <MarketInfoTab marketId={market} syphonAddress={syphonAddress} />
           ))}
         </div>

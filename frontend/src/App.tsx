@@ -5,6 +5,9 @@ import LandingPage from "./pages/LandingPage";
 import Navbar from "./components/Navbar";
 import DashboardPage from "./pages/DashboardPage";
 import MarketPage from "./pages/MarketPage";
+import BorrowPage from "./pages/BorrowPage";
+import SupplyPage from "./pages/SupplyPage";
+import { Toaster } from "react-hot-toast";
 
 function App() {
   const location = useLocation();
@@ -12,6 +15,7 @@ function App() {
 
   return (
     <div>
+      <Toaster position="top-right" />
       <Routes>
         <Route />
       </Routes>
@@ -22,6 +26,8 @@ function App() {
           <Route path="/markets" element={<MarketsPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/markets/market/:id" element={<MarketPage />} />
+          <Route path="/markets/borrow/:id" element={<BorrowPage />} />
+          <Route path="markets/supply/:id" element={<SupplyPage />} />
         </Routes>
       </main>
     </div>

@@ -3,7 +3,7 @@ import { useGetMarketInfo, useGetMarketParams } from "../hooks/Syphon.js";
 import Tokens from "../abi/tokenToAddress.json";
 import { getReverseTokens } from "../utils/utils.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
-import { formatEther } from "viem";
+import { formatEther, type Hex } from "viem";
 import token from "../../public/tokens/pUSD.svg";
 import arrow from "../assets/icons/arrow-down-3101.svg";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +12,7 @@ const MarketInfoTab = ({
   marketId,
   syphonAddress,
 }: {
-  marketId: string;
+  marketId: Hex;
   syphonAddress: string;
 }) => {
   const navigate = useNavigate();
@@ -67,7 +67,7 @@ const MarketInfoTab = ({
 
   return (
     <div
-      onClick={() => navigate(`market/:${marketId}`)}
+      onClick={() => navigate(`market/${marketId}`)}
       className="w-full grid grid-cols-[repeat(5,1fr)_max-content] items-center bg-white/5 p-[14px] rounded-2xl cursor-pointer"
     >
       <div className="flex items-center gap-[8px]">

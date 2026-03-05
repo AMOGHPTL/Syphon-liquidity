@@ -21,3 +21,10 @@ overflow-x: hidden;
   animation: scroll 20s linear infinite;
     width: max-content;
 }
+
+/*to remove the spinner in input type number*/
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

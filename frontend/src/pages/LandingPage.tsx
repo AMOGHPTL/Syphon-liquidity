@@ -3,8 +3,10 @@ import logo from "../assets/icons/pool-sports-swimmer-svgrepo-com.svg";
 import RollingBelt from "../components/RollingBelt";
 import CyclingCards from "../components/RollingBelt";
 import NavBtn from "../components/low-level/NavBtn";
+import { useFaucetTokens } from "../hooks/erc20.js";
 
 const LandingPage = () => {
+  const { claimTokens } = useFaucetTokens();
   const navigate = useNavigate();
   return (
     <div className="flex flex-col items-center py-[32px]">
@@ -24,7 +26,14 @@ const LandingPage = () => {
             individual pool mitigate risk and enjoy safe lending and borrowing
           </p>
         </div>
-        <div>
+
+        <div className="flex items-center gap-[48px]">
+          <div
+            onClick={claimTokens}
+            className="p-[12px] rounded-full bg-blue-600 cursor-pointer hover:bg-white hover:text-black"
+          >
+            Claim Tokens
+          </div>
           <NavBtn to="/markets" text="Launch app" />
         </div>
         <div>

@@ -4,3 +4,8 @@ export function getReverseTokens(TokenName) {
   );
   return Tokens;
 } 
+
+export function shortenHash(hash, start = 4, end = 4) {
+  if (!hash) return "";
+  return `${hash.slice(0, start)}....${hash.slice(-end)}`;
+}
