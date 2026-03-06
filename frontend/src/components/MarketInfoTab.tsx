@@ -68,37 +68,61 @@ const MarketInfoTab = ({
   return (
     <div
       onClick={() => navigate(`market/${marketId}`)}
-      className="w-full grid grid-cols-[repeat(5,1fr)_max-content] items-center bg-white/5 p-[14px] rounded-2xl cursor-pointer"
+      className="w-full flex flex-col gap-[24px] bg-black/30 hover:bg-black/90 px-[24px] py-[18px] rounded-2xl cursor-pointer"
     >
       <div className="flex items-center gap-[8px]">
-        <img
-          src={`../../public/tokens/${addressToToken[marketParams.collateralToken]}.svg`}
-          alt=""
-          className="w-[24px]"
-        />
-        <p className="text-[18px]">
-          {addressToToken[marketParams.collateralToken]}
-        </p>
+        <div className="flex items-center gap-[8px]">
+          <img
+            src={`../../public/tokens/${addressToToken[marketParams.collateralToken]}.svg`}
+            alt=""
+            className="w-[32px]"
+          />
+          <p className="text-[24px]">
+            {addressToToken[marketParams.collateralToken]}
+          </p>
+        </div>
+        <p className="text-[24px] font-thin">/</p>
+        <div className="flex items-center gap-[8px]">
+          <img
+            src={`../../public/tokens/${addressToToken[marketParams.loanToken]}.svg`}
+            alt=""
+            className="w-[32px]"
+          />
+          <p className="text-[24px]">
+            {addressToToken[marketParams.loanToken]}
+          </p>
+        </div>
       </div>
-      <div className="flex items-center gap-[8px]">
-        <img
-          src={`../../public/tokens/${addressToToken[marketParams.loanToken]}.svg`}
-          alt=""
-          className="w-[24px]"
-        />
-        <p className="text-[18px]">{addressToToken[marketParams.loanToken]}</p>
-      </div>
-      <div>
-        <p>{BigInt(borrowRate) / BigInt(1e16)}%</p>
-      </div>
-      <div>
-        <p>{BigInt(borrowRate) / BigInt(1e16)}%</p>
-      </div>
-      <div>
-        <p>{BigInt(marketParams.lltv) / BigInt(1e16)}%</p>
-      </div>
-      <div>
-        <img src={arrow} alt="" className="w-[18px] rotate-270" />
+      <div className="w-full flex flex-col gap-[12px]">
+        <div className="w-full flex items-center justify-between">
+          <div>
+            <p>
+              TVL : $
+              {formatEther(
+                marketInfo.totalSupplyAssets + marketInfo.totalBorrowAssets,
+              )}
+            </p>
+          </div>
+          <div>
+            <p>
+              Liquidity : $
+              {formatEther(
+                BigInt(
+                  marketInfo.totalSupplyAssets - marketInfo.totalBorrowAssets,
+                ),
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="w-full flex items-center justify-between">
+          <div>
+            <p>Borrow APR : {BigInt(borrowRate) / BigInt(1e16)}%</p>
+          </div>
+
+          <div>
+            <p>LTV : {BigInt(marketParams.lltv) / BigInt(1e16)}%</p>
+          </div>
+        </div>
       </div>
     </div>
   );

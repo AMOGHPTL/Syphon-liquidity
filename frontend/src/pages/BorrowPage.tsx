@@ -24,7 +24,6 @@ const BorrowPage = () => {
 
   const [collateralAmount, setCollateralAmount] = useState<bigint>(0n);
   const [borrowAmount, setBorrowAmount] = useState<bigint>(0n);
-  const [hasSuppliedCollateral, setHasSuppliedCollateral] = useState(false);
 
   const addressToToken = getReverseTokens(Tokens);
 
@@ -71,9 +70,12 @@ const BorrowPage = () => {
     error: errorPosition,
   } = useGetUserPosition(syphonAddress, id);
 
+  const { data: tokenBalance, isLoading } = useGetERC20Balance(
+    marketParams.collateralToken,
+  );
+
   useEffect(() => {
     if (supplyCollateralSuccess) {
-      setHasSuppliedCollateral(true);
       toast.success(`supplied collateral $${formatEther(collateralAmount)}`);
     }
   }, [supplyCollateralSuccess]);
@@ -101,7 +103,6 @@ const BorrowPage = () => {
 
   useEffect(() => {
     if (borrowSuccess) {
-      setHasSuppliedCollateral(true);
       toast.success(`borrowed $${formatEther(borrowAmount)} succesfully`);
       navigate(`/markets/market/${id}`);
     }
@@ -127,19 +128,6 @@ const BorrowPage = () => {
       setBorrowAmount(0n);
     }
   }, [borrowError]);
-
-  useEffect(() => {
-    if (
-      position &&
-      Number(
-        (position.borrowShares * marketInfo.totalBorrowAssets) /
-          marketInfo.totalBorrowShares,
-      ) <
-        Number(position.collateral) / 1.2
-    ) {
-      setHasSuppliedCollateral(true);
-    }
-  }, [position]);
 
   // Handle loading
   if (
@@ -174,37 +162,21 @@ const BorrowPage = () => {
   console.log("borrow rate:", borrowRate);
   console.log("irm address:", marketParams.irm);
   console.log("user poition:", position);
-  console.log(
-    Number(
+
+  let userBorrowAmount = 0;
+
+  if (!position.borrowShares) {
+    userBorrowAmount = 0;
+  } else {
+    userBorrowAmount = Number(
       (position.borrowShares * marketInfo.totalBorrowAssets) /
         marketInfo.totalBorrowShares,
-    ) <
-      Number(position.collateral) / 1.2,
-  );
-
-  console.log(
-    formatEther(
-      BigInt(
-        Number(position.collateral) / 1.2 -
-          Number(
-            (position.borrowShares * marketInfo.totalBorrowAssets) /
-              marketInfo.totalBorrowShares,
-          ),
-      ),
-    ),
-  );
+    );
+  }
 
   const maxBorrow = Math.min(
     Number(
-      formatEther(
-        BigInt(
-          Number(position.collateral) / 1.2 -
-            Number(
-              (position.borrowShares * marketInfo.totalBorrowAssets) /
-                marketInfo.totalBorrowShares,
-            ),
-        ),
-      ),
+      formatEther(BigInt(Number(position.collateral) / 1.2 - userBorrowAmount)),
     ),
     Number(formatEther(marketInfo.totalSupplyAssets)) -
       Number(formatEther(marketInfo.totalBorrowAssets)),
@@ -226,79 +198,65 @@ const BorrowPage = () => {
 
         <div className="flex gap-[48px]">
           {/* Supply Collateral */}
-          {!hasSuppliedCollateral && (
-            <div className="flex flex-col gap-[24px] p-[24px] bg-[#1d1c28] rounded-2xl w-[600px]">
-              <div className="flex items-center justify-between">
-                <p className="text-[24px]">
-                  Supply Collateral{" "}
-                  {addressToToken[marketParams.collateralToken]}
-                </p>
-                <img
-                  src={`../../public/tokens/${addressToToken[marketParams.collateralToken]}.svg`}
-                  alt=""
-                  className="w-[28px]"
-                />
-              </div>
 
-              <Input
-                inputAmount={collateralAmount}
-                setInputAmount={setCollateralAmount}
-                token={marketParams.collateralToken}
+          <div className="flex flex-col gap-[24px] p-[24px] bg-[#1d1c28] rounded-2xl w-[600px]">
+            <div className="flex items-center justify-between">
+              <p className="text-[24px]">
+                Supply Collateral {addressToToken[marketParams.collateralToken]}
+              </p>
+              <img
+                src={`../../public/tokens/${addressToToken[marketParams.collateralToken]}.svg`}
+                alt=""
+                className="w-[28px]"
               />
-
-              <button
-                onClick={() =>
-                  supplyCollateral(marketParams, id, collateralAmount)
-                }
-                className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer"
-              >
-                Supply
-              </button>
             </div>
-          )}
+
+            <Input
+              inputAmount={collateralAmount}
+              setInputAmount={setCollateralAmount}
+              token={marketParams.collateralToken}
+            />
+
+            <button
+              disabled={collateralAmount > tokenBalance}
+              onClick={() =>
+                supplyCollateral(marketParams, id, collateralAmount)
+              }
+              className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600"
+            >
+              Supply
+            </button>
+          </div>
 
           {/* Borrow Section (only if collateral supplied) */}
-          {hasSuppliedCollateral && (
-            <div className="flex flex-col gap-[12px] p-[24px] bg-[#1d1c28] rounded-2xl w-[600px]">
-              <p className="text-[18px]">Borrow</p>
 
-              <Input
-                inputAmount={borrowAmount}
-                setInputAmount={setBorrowAmount}
-                token={marketParams.loanToken}
-              />
+          <div className="flex flex-col gap-[12px] p-[24px] bg-[#1d1c28] rounded-2xl w-[600px]">
+            <p className="text-[18px]">Borrow</p>
 
-              <div>
-                <p>max borrow amount: ${maxBorrow}</p>
-              </div>
+            <Input
+              inputAmount={borrowAmount}
+              setInputAmount={setBorrowAmount}
+              token={marketParams.loanToken}
+            />
 
-              {Number(formatEther(borrowAmount)) >
-                Number(
-                  formatEther(
-                    BigInt(
-                      Number(position.collateral) / 1.2 -
-                        Number(
-                          (position.borrowShares *
-                            marketInfo.totalBorrowAssets) /
-                            marketInfo.totalBorrowShares,
-                        ),
-                    ),
-                  ),
-                ) && (
-                <p className="text-[12px] text-red-600">
-                  *max borrow amount exceeded
-                </p>
-              )}
-
-              <button
-                disabled={Number(formatEther(borrowAmount)) > Number(maxBorrow)}
-                onClick={() => borrow(marketParams, id, borrowAmount)}
-                className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-md cursor-pointer disabled:bg-gray-500"
-              >
-                Borrow
-              </button>
+            <div>
+              <p>max borrow amount: ${maxBorrow}</p>
             </div>
-          )}
+
+            {Number(formatEther(borrowAmount)) > maxBorrow && (
+              <p className="text-[12px] text-red-600">
+                *max borrow amount exceeded
+              </p>
+            )}
+
+            <button
+              disabled={Number(formatEther(borrowAmount)) > maxBorrow}
+              onClick={() => borrow(marketParams, id, borrowAmount)}
+              className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-md cursor-pointer disabled:bg-gray-500"
+            >
+              Borrow
+            </button>
+          </div>
         </div>
       </div>
     </div>

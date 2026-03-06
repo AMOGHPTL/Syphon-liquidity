@@ -23,20 +23,10 @@ const MarketsPage = () => {
       <div>
         <p className="text-[32px]">Markets</p>
       </div>
-      <div className="flex flex-col gap-[24px]  rounded-2xl bg-white/5">
-        <div className="grid grid-cols-[repeat(5,1fr)_max-content] py-[12px] px-[24px] bg-white/5 rounded-2xl rounded-b-none">
-          <p className="text-[24px]">collateral token</p>
-          <p className="text-[24px]">loan token</p>
-          <p className="text-[24px]">borrow APY</p>
-          <p className="text-[24px]">suppy APY</p>
-          <p className="text-[24px]">LTV</p>
-          <div className="w-[32px]"></div>
-        </div>
-        <div className="flex flex-col gap-[24px] p-[24px]">
-          {markets.map((market: Hex) => (
-            <MarketInfoTab marketId={market} syphonAddress={syphonAddress} />
-          ))}
-        </div>
+      <div className="grid grid-cols-[repeat(3,1fr)] gap-[24px]">
+        {markets.map((market: Hex) => (
+          <MarketInfoTab marketId={market} syphonAddress={syphonAddress} />
+        ))}
       </div>
     </div>
   );
