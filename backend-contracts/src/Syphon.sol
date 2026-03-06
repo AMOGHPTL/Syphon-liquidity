@@ -246,7 +246,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         if (position.collateral < requiredCollateral) {
             revert Syphon__UnderCollateralized();
         }
-        if (amountToBorrow > market.totalSupplyAssets) {
+        if (amountToBorrow > (market.totalSupplyAssets - market.totalBorrowAssets)) {
             revert Syphon__InsufficientLoanSupply();
         }
 
@@ -262,7 +262,6 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
             sPositions[id][msg.sender].borrowShares += shares;
         }
 
-        sMarket[id].totalSupplyAssets -= amountToBorrow;
         sMarket[id].lastUpdate = block.timestamp;
 
         IERC20(marketParams.loanToken).safeTransfer(msg.sender, amountToBorrow);
@@ -357,7 +356,6 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         uint256 borrowRate = MockIrm(marketParams.irm).borrowRate(sMarket[id]);
         uint256 interest = borrowRate.mulDiv(sMarket[id].totalBorrowAssets * elapsed, 365 days * INTEREST_PRECISION);
 
-        sMarket[id].totalSupplyAssets += interest;
         sMarket[id].totalBorrowAssets += interest;
         sMarket[id].lastUpdate = block.timestamp;
     }
