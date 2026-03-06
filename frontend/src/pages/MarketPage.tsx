@@ -126,13 +126,19 @@ const MarketPage = () => {
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Total liquidity</p>
               <p className="text-[24px]">
-                ${Number(formatEther(marketInfo.totalSupplyAssets)).toFixed(2)}
+                $
+                {Number(
+                  formatEther(
+                    BigInt(marketInfo.totalSupplyAssets) -
+                      BigInt(marketInfo.totalBorrowAssets),
+                  ),
+                ).toFixed(2)}
               </p>
             </div>
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Rate</p>
               <p className="text-[24px]">
-                {(BigInt(borrowRate) * BigInt(100)) / BigInt(1e18)}%
+                {((Number(borrowRate) / 1e18) * 100).toFixed(2)}%
               </p>
             </div>
             <div className="flex flex-col gap-[12px]">

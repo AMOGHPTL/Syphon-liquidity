@@ -183,3 +183,106 @@ export function useWithdraw(syphonAddress) {
     isSuccess,
   };
 }
+
+export function useSupplyCollateral(syphonAddress) {
+  const [hash, setHash] = useState(null);
+
+  const { writeContractAsync } = useWriteContract();
+
+  const {
+    isLoading: isConfirming,
+    isSuccess,
+    error,
+  } = useWaitForTransactionReceipt({
+    hash,
+  });
+  const supplyCollateral = async (marketParams, Id, collateralAmount) => {
+    if (!marketParams || !Id || !collateralAmount) return;
+
+    await writeContractAsync({
+      address: marketParams.collateralToken,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [syphonAddress, collateralAmount],
+    });
+
+    const txHash = await writeContractAsync({
+      address: syphonAddress,
+      abi: syphon,
+      functionName: "supplyCollateral",
+      args: [marketParams, Id, collateralAmount],
+    });
+
+    setHash(txHash);
+  };
+
+  return {
+    supplyCollateral,
+    isConfirming,
+    isSuccess,
+    error,
+  };
+}
+
+export function useGetUserPosition(syphonAddress, id, watch = true) {
+  const { address: user } = useAccount();
+  const result = useReadContract({
+    address: syphonAddress,
+    abi: syphon,
+    functionName: "getUserPosition",
+    args: [id, user],
+    query: {
+      enabled: !!syphonAddress, // don't run if address missing
+      refetchInterval: watch ? 3000 : false, // auto refresh every 3s (optional)
+    },
+  });
+
+  const position = result.data ? result.data : null;
+
+  return {
+    position,
+    isLoading: result.isLoading,
+    error: result.error,
+    refetch: result.refetch,
+  };
+}
+
+export function useBorrow(syphonAddress) {
+  const [hash, setHash] = useState(null);
+
+  const { writeContractAsync } = useWriteContract();
+
+  const {
+    isLoading: isConfirming,
+    isSuccess,
+    error,
+  } = useWaitForTransactionReceipt({
+    hash,
+  });
+  const borrow = async (marketParams, Id, amountToBorrow) => {
+    if (!marketParams || !Id || !amountToBorrow) return;
+
+    await writeContractAsync({
+      address: marketParams.loanToken,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [syphonAddress, amountToBorrow],
+    });
+
+    const txHash = await writeContractAsync({
+      address: syphonAddress,
+      abi: syphon,
+      functionName: "borrow",
+      args: [marketParams, Id, amountToBorrow],
+    });
+
+    setHash(txHash);
+  };
+
+  return {
+    borrow,
+    isConfirming,
+    isSuccess,
+    error,
+  };
+}
