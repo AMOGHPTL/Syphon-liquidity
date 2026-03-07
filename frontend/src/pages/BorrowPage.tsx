@@ -71,7 +71,7 @@ const BorrowPage = () => {
   } = useGetUserPosition(syphonAddress, id);
 
   const { data: tokenBalance, isLoading } = useGetERC20Balance(
-    marketParams.collateralToken,
+    marketParams?.collateralToken,
   );
 
   useEffect(() => {
@@ -215,6 +215,7 @@ const BorrowPage = () => {
               inputAmount={collateralAmount}
               setInputAmount={setCollateralAmount}
               token={marketParams.collateralToken}
+              max={tokenBalance}
             />
 
             <button
@@ -237,6 +238,7 @@ const BorrowPage = () => {
               inputAmount={borrowAmount}
               setInputAmount={setBorrowAmount}
               token={marketParams.loanToken}
+              max={BigInt(Number(maxBorrow) * 1e18)}
             />
 
             <div>
