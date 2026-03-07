@@ -334,7 +334,6 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         console.log("assets to burn:", assetsToBurn);
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= assetsToBurn;
-        sMarket[id].totalSupplyAssets += assetsToBurn;
         sPositions[id][toLiquidate].borrowShares = 0;
         sPositions[id][toLiquidate].collateral = 0;
 
