@@ -8,7 +8,8 @@ import { useGetBorrowRate } from "../hooks/Irm.js";
 import arrow from "../assets/icons/arrow-down-3101.svg";
 import { formatEther } from "viem";
 import NavBtn from "../components/low-level/NavBtn.js";
-import { useWithdraw } from "../hooks/Syphon.js";
+import { useWithdraw, useGetUserPosition } from "../hooks/Syphon.js";
+import MarketPositionTab from "../components/low-level/MarketPositionTab.js";
 
 const MarketPage = () => {
   const { id } = useParams();
@@ -45,8 +46,19 @@ const MarketPage = () => {
     error: errorBorrowRate,
   } = useGetBorrowRate(marketParams?.irm, marketInfo);
 
+  const {
+    position,
+    isLoading: isLoadingPosition,
+    error: errorPosition,
+  } = useGetUserPosition(syphonAddress, id);
+
   // Handle loading
-  if (isLoadingMarketInfo || isLoadingMarketParams || isLoadingBorrowRate) {
+  if (
+    isLoadingMarketInfo ||
+    isLoadingMarketParams ||
+    isLoadingBorrowRate ||
+    isLoadingPosition
+  ) {
     return <div>.....Loading</div>;
   }
 
@@ -59,6 +71,7 @@ const MarketPage = () => {
           <p>Market params error: {errorMarketParams.message}</p>
         )}
         {errorBorrowRate && <p>Borrow rate error: {errorBorrowRate.message}</p>}
+        {errorPosition && <p>User position error: {errorPosition.message}</p>}
       </div>
     );
   }
@@ -163,12 +176,64 @@ const MarketPage = () => {
               <NavBtn to={`/markets/supply/${id}`} text="supply" />
             </div>
           </div>
-          <button
+          {/* <button
             onClick={() => withdraw(marketParams, id, 10e18, 0)}
             className="p-[12px] cursor-pointer bg-blue-600 rounded-full"
           >
             Withdraw
-          </button>
+          </button> */}
+        </div>
+        {/* poistions */}
+        <div className="flex flex-col gap-[32px]">
+          <p className="text-[32px]">Positions</p>
+          {!position.supplyShares && !position.collateral ? (
+            <p className="text-[18px]">No positions....</p>
+          ) : (
+            <div className="flex flex-col gap-[24px] pr-[30%]">
+              {position.supplyShares != 0n && (
+                <div>
+                  <MarketPositionTab
+                    id={id}
+                    token={addressToToken[marketParams.loanToken]}
+                    path="withdraw"
+                    title="Liquidity"
+                    value={formatEther(
+                      BigInt(
+                        (position.supplyShares * marketInfo.totalSupplyAssets) /
+                          marketInfo.totalSupplyShares,
+                      ),
+                    )}
+                  />
+                </div>
+              )}
+              {position.collateral != 0n && (
+                <MarketPositionTab
+                  id={id}
+                  path="withdrawCollateral"
+                  title="Collateral"
+                  value={formatEther(position.collateral)}
+                  token={addressToToken[marketParams.collateralToken]}
+                />
+              )}
+              {position.supplyShares != 0n &&
+                marketInfo.totalBorrowShares != 0 && (
+                  <MarketPositionTab
+                    id={id}
+                    path="repay"
+                    title="Borrow"
+                    value={formatEther(
+                      BigInt(
+                        (position.borrowShares * marketInfo.totalBorrowAssets) /
+                          marketInfo.totalBorrowShares,
+                      ),
+                    )}
+                    token={addressToToken[marketParams.loanToken]}
+                  />
+                )}
+            </div>
+          )}
+          {/* <MarketPositionTab id={id} path1="" path2="" title="" value="" />
+          <MarketPositionTab id={id} path1="" path2="" title="" value="" /> */}
         </div>
       </div>
     </div>
