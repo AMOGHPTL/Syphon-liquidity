@@ -6,7 +6,8 @@ import syphonAddresses from "../abi/SyphonAddresses.json";
 import {
   useGetMarketInfo,
   useGetMarketParams,
-  useSupply,
+  useWithdraw,
+  useGetUserPosition,
 } from "../hooks/Syphon.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
 import { useChainId } from "wagmi";
@@ -16,8 +17,8 @@ import { formatEther } from "viem";
 import toast from "react-hot-toast";
 import { useGetERC20Balance } from "../hooks/erc20.js";
 
-const SupplyPage = () => {
-  const [supplyAmount, setSupplyAmount] = useState<bigint>(0n);
+const WithdrawPage = () => {
+  const [withdrawAmount, setwithdrawAmount] = useState<bigint>(0n);
 
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -28,7 +29,7 @@ const SupplyPage = () => {
   const contractAddresses = syphonAddresses as Record<number, string>;
   const syphonAddress = contractAddresses[chainId];
 
-  const { supply, isSuccess, error } = useSupply(syphonAddress);
+  const { withdraw, isSuccess, error } = useWithdraw(syphonAddress);
 
   const {
     marketInfo,
@@ -46,6 +47,12 @@ const SupplyPage = () => {
     useGetERC20Balance(marketParams.loanToken);
 
   const {
+    position,
+    isLoading: isLoadingPosition,
+    error: errorPosition,
+  } = useGetUserPosition(syphonAddress, id);
+
+  const {
     borrowRate,
     isLoading: isLoadingBorrowRate,
     error: errorBorrowRate,
@@ -54,7 +61,7 @@ const SupplyPage = () => {
   useEffect(() => {
     if (isSuccess) {
       navigate(`/markets/market/${id}`);
-      toast.success(`$${formatEther(supplyAmount)} supplied succesfully`);
+      toast.success(`$${formatEther(withdrawAmount)} withdrawn succesfully`);
     }
   }, [isSuccess]);
 
@@ -75,7 +82,7 @@ const SupplyPage = () => {
         : "Transaction failed";
 
       toast.error(message);
-      setSupplyAmount(0n);
+      setwithdrawAmount(0n);
     }
   }, [error]);
 
@@ -85,12 +92,18 @@ const SupplyPage = () => {
     isLoadingMarketInfo ||
     isLoadingMarketParams ||
     isLoadingBorrowRate ||
-    isLoadingTokenBalance
+    isLoadingTokenBalance ||
+    isLoadingPosition
   ) {
     return <div>.....Loading</div>;
   }
 
-  if (errorMarketInfo || errorMarketParams || errorBorrowRate) {
+  if (
+    errorMarketInfo ||
+    errorMarketParams ||
+    errorBorrowRate ||
+    errorPosition
+  ) {
     return (
       <div>
         {errorMarketInfo && <p>Market info error: {errorMarketInfo.message}</p>}
@@ -119,11 +132,11 @@ const SupplyPage = () => {
       </div>
 
       <div className="flex flex-col gap-[48px]">
-        <p className="text-[32px]">Supply Liquidity</p>
+        <p className="text-[32px]">Withdraw Liquidity</p>
 
         <div className="flex flex-col gap-[24px] p-[24px] bg-[#1d1c28] rounded-2xl w-[600px]">
           <div className="flex items-center justify-between">
-            <p className="text-[24px]">Supply Liquidity {tokenSymbol}</p>
+            <p className="text-[24px]">Withdraw liquidity {tokenSymbol}</p>
 
             <img
               src={`/tokens/${tokenSymbol}.svg`}
@@ -133,18 +146,40 @@ const SupplyPage = () => {
           </div>
 
           <Input
-            inputAmount={supplyAmount}
-            setInputAmount={setSupplyAmount}
+            inputAmount={withdrawAmount}
+            setInputAmount={setwithdrawAmount}
             token={marketParams.loanToken}
-            max={tokenBalance}
+            max={BigInt(
+              Math.min(
+                Number(
+                  (position.supplyShares * marketInfo.totalSupplyAssets) /
+                    marketInfo.totalSupplyShares,
+                ),
+                Number(marketInfo.totalSupplyAssets) -
+                  Number(marketInfo.totalBorrowAssets),
+              ),
+            )}
           />
 
           <button
-            disabled={supplyAmount === 0n || supplyAmount > tokenBalance}
-            onClick={() => supply(marketParams, id, supplyAmount)}
+            disabled={
+              withdrawAmount === 0n ||
+              withdrawAmount >
+                BigInt(
+                  Math.min(
+                    Number(
+                      (position.supplyShares * marketInfo.totalSupplyAssets) /
+                        marketInfo.totalSupplyShares,
+                    ),
+                    Number(marketInfo.totalSupplyAssets) -
+                      Number(marketInfo.totalBorrowAssets),
+                  ),
+                )
+            }
+            onClick={() => withdraw(marketParams, id, withdrawAmount, 0)}
             className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            Supply
+            Withdraw
           </button>
         </div>
       </div>
@@ -152,4 +187,4 @@ const SupplyPage = () => {
   );
 };
 
-export default SupplyPage;
+export default WithdrawPage;
