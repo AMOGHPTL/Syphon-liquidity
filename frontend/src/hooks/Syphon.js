@@ -224,6 +224,39 @@ export function useSupplyCollateral(syphonAddress) {
   };
 }
 
+export function useWithdrawCollateral(syphonAddress) {
+  const [hash, setHash] = useState(null);
+
+  const { writeContractAsync } = useWriteContract();
+
+  const {
+    isLoading: isConfirming,
+    isSuccess,
+    error,
+  } = useWaitForTransactionReceipt({
+    hash,
+  });
+  const withdrawCollateral = async (marketParams, Id, collateralToWithdraw) => {
+    if (!marketParams || !Id || !collateralToWithdraw) return;
+
+    const txHash = await writeContractAsync({
+      address: syphonAddress,
+      abi: syphon,
+      functionName: "withdrawCollateral",
+      args: [marketParams, Id, collateralToWithdraw],
+    });
+
+    setHash(txHash);
+  };
+
+  return {
+    withdrawCollateral,
+    isConfirming,
+    isSuccess,
+    error,
+  };
+}
+
 export function useGetUserPosition(syphonAddress, id, watch = true) {
   const { address: user } = useAccount();
   const result = useReadContract({
@@ -287,4 +320,36 @@ export function useBorrow(syphonAddress) {
   };
 }
 
+export function useRepay(syphonAddress) {
+  const [hash, setHash] = useState(null);
+  const { writeContractAsync } = useWriteContract();
 
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
+  const repay = async (marketParams, Id, amountToRepay, sharesToRepay) => {
+    if (!marketParams || !Id || (!amountToRepay && !sharesToRepay)) return;
+
+    await writeContractAsync({
+      address: marketParams.loanToken,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [syphonAddress, amountToRepay],
+    });
+
+    const txHash = await writeContractAsync({
+      address: syphonAddress,
+      abi: syphon,
+      functionName: "repay",
+      args: [marketParams, Id, amountToRepay, sharesToRepay],
+    });
+
+    setHash(txHash);
+  };
+
+  return {
+    repay,
+    isConfirming,
+    isSuccess,
+  };
+}

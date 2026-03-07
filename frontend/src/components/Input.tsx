@@ -6,23 +6,20 @@ const Input = ({
   inputAmount,
   setInputAmount,
   token,
+  max,
 }: {
   inputAmount: bigint;
   setInputAmount: React.Dispatch<React.SetStateAction<bigint>>;
   token: string;
+  max?: bigint;
 }) => {
   const [displayValue, setDisplayValue] = useState(""); // ADD THIS
-  const { data: tokenBalance, isLoading } = useGetERC20Balance(token);
 
   useEffect(() => {
     if (inputAmount === 0n) setDisplayValue("");
   }, [inputAmount]);
 
-  if (isLoading) return <div>Loading balance....</div>;
-
-  const formattedBalance = tokenBalance
-    ? Number(formatEther(tokenBalance)).toFixed(2)
-    : "0.00";
+  const formattedBalance = max ? Number(formatEther(max)).toFixed(2) : "0.00";
 
   return (
     <div className="flex flex-col gap-[12px]">
@@ -51,9 +48,9 @@ const Input = ({
 
         <p
           onClick={() => {
-            if (tokenBalance) {
-              setInputAmount(tokenBalance);
-              setDisplayValue(formatEther(tokenBalance)); // sync display on max click
+            if (max) {
+              setInputAmount(max);
+              setDisplayValue(formatEther(max)); // sync display on max click
             }
           }}
           className="cursor-pointer"

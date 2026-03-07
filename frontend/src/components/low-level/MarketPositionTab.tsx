@@ -22,11 +22,11 @@ const MarketPositionTab = ({
         <img
           src={`../../../public/tokens/${token}.svg`}
           alt=""
-          className="w-[18px]"
+          className="w-[24px]"
         />
         <p className="text-[18px]">{token}</p>
       </div>
-      <p className="text-[18px]">${value}</p>
+      <p className="text-[18px]">${Number(value).toFixed(2)}</p>
 
       {/* <NavBtn text={path1} to={`/markets/${path1}/${id}`} /> */}
       <NavBtn text={path} to={`/markets/${path}/${id}`} />
