@@ -304,7 +304,6 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
 
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= repayAmount;
-        sMarket[id].totalSupplyAssets += repayAmount;
         sPositions[id][msg.sender].borrowShares -= sharesToBurn;
         IERC20(marketParams.loanToken).safeTransferFrom(msg.sender, address(this), repayAmount);
 
