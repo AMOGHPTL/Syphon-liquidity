@@ -6,8 +6,9 @@ import {
 } from "wagmi";
 import syphon from "../abi/Syphon.json";
 import { useAccount } from "wagmi";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import erc20Abi from "../abi/ERC20.json";
+import { parseAbiItem } from "viem";
 
 export function useGetSyphonMarketIds(syphonAddress, watch = true) {
   const result = useReadContract({
@@ -280,6 +281,28 @@ export function useGetUserPosition(syphonAddress, id, watch = true) {
   };
 }
 
+export function useGetUsersPosition(syphonAddress, id, user, watch = true) {
+  const result = useReadContract({
+    address: syphonAddress,
+    abi: syphon,
+    functionName: "getUserPosition",
+    args: [id, user],
+    query: {
+      enabled: !!syphonAddress, // don't run if address missing
+      refetchInterval: watch ? 3000 : false, // auto refresh every 3s (optional)
+    },
+  });
+
+  const positions = result.data ? result.data : null;
+
+  return {
+    positions,
+    isLoading: result.isLoading,
+    error: result.error,
+    refetch: result.refetch,
+  };
+}
+
 export function useBorrow(syphonAddress) {
   const [hash, setHash] = useState(null);
 
@@ -351,5 +374,111 @@ export function useRepay(syphonAddress) {
     repay,
     isConfirming,
     isSuccess,
+  };
+}
+
+const BORROWED_EVENT = parseAbiItem(
+  "event borrowed(bytes32 id, address loanToken, uint256 borrowAmount, address indexed borrower)",
+);
+
+const mapLog = (log) => ({
+  marketId: log.args.id,
+  loanToken: log.args.loanToken,
+  borrowAmount: log.args.borrowAmount,
+  borrower: log.args.borrower, // ✅ was log.borrower in historical fetch
+  blockNumber: log.blockNumber,
+  transactionHash: log.transactionHash,
+});
+
+export function useBorrowedEvents(contractAddress) {
+  const [borrowedEvents, setBorrowedEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const publicClient = usePublicClient();
+
+  useEffect(() => {
+    if (!contractAddress || !publicClient) return;
+
+    const fetchEvents = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const logs = await publicClient.getLogs({
+          address: contractAddress,
+          event: BORROWED_EVENT,
+          fromBlock: 0n,
+          toBlock: "latest",
+        });
+        setBorrowedEvents(logs.map(mapLog)); // ✅ shared mapper, no typos
+      } catch (err) {
+        setError(err.message);
+        console.error("Error fetching borrowed events:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, [contractAddress, publicClient]);
+
+  useEffect(() => {
+    if (!contractAddress || !publicClient) return;
+
+    const unwatch = publicClient.watchEvent({
+      address: contractAddress,
+      event: BORROWED_EVENT,
+      onLogs: (logs) => {
+        const newEvents = logs.map(mapLog); // ✅ same mapper
+        setBorrowedEvents((prev) => {
+          const existingHashes = new Set(prev.map((e) => e.transactionHash));
+          const deduplicated = newEvents.filter(
+            (e) => !existingHashes.has(e.transactionHash),
+          );
+          return [...prev, ...deduplicated];
+        });
+      },
+      onError: (err) => {
+        console.error("Watch event error:", err);
+        setError(err.message);
+      },
+    });
+
+    return () => unwatch();
+  }, [contractAddress, publicClient]);
+
+  return { borrowedEvents, loading, error };
+}
+
+export function useLiquidate(syphonAddress) {
+  const [hash, setHash] = useState(null);
+
+  const { writeContractAsync } = useWriteContract();
+
+  const {
+    isLoading: isConfirming,
+    isSuccess,
+    error,
+  } = useWaitForTransactionReceipt({
+    hash,
+  });
+  const liquidate = async (marketParams, Id, toLiquidate) => {
+    if (!marketParams || !Id || !toLiquidate) return;
+
+    const txHash = await writeContractAsync({
+      address: syphonAddress,
+      abi: syphon,
+      functionName: "liquidate",
+      args: [marketParams, Id, toLiquidate],
+    });
+
+    setHash(txHash);
+  };
+
+  return {
+    liquidate,
+    isConfirming,
+    isSuccess,
+    error,
   };
 }

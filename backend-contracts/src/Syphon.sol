@@ -46,7 +46,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
     event withdrawn(bytes32 id, address withdrawToken, uint256 indexed amountToWithdraw);
     event collateralSupplied(bytes32 id, address collateralToken, uint256 indexed collateralAmount);
     event collateralWithdrawn(bytes32 id, address collateralToken, uint256 indexed collateralToWithdraw);
-    event borrowed(bytes32 id, address loanToken, uint256 indexed borrowAmount);
+    event borrowed(bytes32 id, address loanToken, uint256 borrowAmount, address indexed borrower);
     event repayed(bytes32 id, uint256 indexed sharesRepayed, uint256 repayAmount);
     event liquidated(address indexed liquidatedAddress, address liquidator, uint256 incentive);
 
@@ -266,7 +266,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
 
         IERC20(marketParams.loanToken).safeTransfer(msg.sender, amountToBorrow);
 
-        emit borrowed(id, marketParams.loanToken, amountToBorrow);
+        emit borrowed(id, marketParams.loanToken, amountToBorrow, msg.sender);
     }
 
     function repay(MarketParams memory marketParams, bytes32 id, uint256 amountToRepay, uint256 sharesToRepay)

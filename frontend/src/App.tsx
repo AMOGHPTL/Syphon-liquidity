@@ -11,6 +11,7 @@ import { Toaster } from "react-hot-toast";
 import WithdrawPage from "./pages/WithdrawPage";
 import WithdrawCollateralPage from "./pages/WithdrawCollateralPage";
 import RepayPage from "./pages/RepayPage";
+import LiquidatePage from "./pages/LiquidatePage";
 
 function App() {
   const location = useLocation();
@@ -28,6 +29,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/markets" element={<MarketsPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/liquidate" element={<LiquidatePage />} />
           <Route path="/markets/market/:id" element={<MarketPage />} />
           <Route path="/markets/borrow/:id" element={<BorrowPage />} />
           <Route path="markets/supply/:id" element={<SupplyPage />} />

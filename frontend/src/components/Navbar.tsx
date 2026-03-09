@@ -14,6 +14,7 @@ const Navbar = () => {
         <Link to={"/dashboard"}>Dashboard</Link>
         <Link to={"/markets"}>Markets</Link>
         <Link to={"/"}>About</Link>
+        <Link to={"/liquidate"}>Liquidate</Link>
       </div>
       <div className="h-[60px] w-fit flex items-center">
         <ConnectButton />

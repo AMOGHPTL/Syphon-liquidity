@@ -58,6 +58,34 @@ const RepayPage = () => {
     error: errorBorrowRate,
   } = useGetBorrowRate(marketParams?.irm, marketInfo);
 
+  useEffect(() => {
+    if (isSuccess) {
+      navigate(`/markets/market/${id}`);
+      toast.success(`$${formatEther(repayAmount)} repayed succesfully`);
+    }
+  }, [isSuccess]);
+
+  useEffect(() => {
+    if (error) {
+      const raw = error.message;
+
+      const match =
+        raw.match(/Syphon__\w+/)?.[0] ||
+        raw.match(/reverted with reason string '(.+?)'/)?.[1] ||
+        raw.match(/execution reverted: (.+?)(?:\n|$)/)?.[1];
+
+      const message = match
+        ? match
+            .replace("Syphon__", "")
+            .replace(/([A-Z])/g, " $1")
+            .trim()
+        : "Transaction failed";
+
+      toast.error(message);
+      setrepayAmount(0n);
+    }
+  }, [error]);
+
   if (!id) return <div>Invalid market</div>;
 
   if (
@@ -92,34 +120,6 @@ const RepayPage = () => {
   }
 
   const tokenSymbol = addressToToken[marketParams.loanToken];
-
-  useEffect(() => {
-    if (isSuccess) {
-      navigate(`/markets/market/${id}`);
-      toast.success(`$${formatEther(repayAmount)} repayed succesfully`);
-    }
-  }, [isSuccess]);
-
-  useEffect(() => {
-    if (error) {
-      const raw = error.message;
-
-      const match =
-        raw.match(/Syphon__\w+/)?.[0] ||
-        raw.match(/reverted with reason string '(.+?)'/)?.[1] ||
-        raw.match(/execution reverted: (.+?)(?:\n|$)/)?.[1];
-
-      const message = match
-        ? match
-            .replace("Syphon__", "")
-            .replace(/([A-Z])/g, " $1")
-            .trim()
-        : "Transaction failed";
-
-      toast.error(message);
-      setrepayAmount(0n);
-    }
-  }, [error]);
 
   return (
     <div className="flex flex-col gap-[48px]">
