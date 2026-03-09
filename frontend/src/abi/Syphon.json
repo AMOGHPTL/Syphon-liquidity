@@ -319,6 +319,68 @@
     },
     {
         "type": "function",
+        "name": "getTotalBorrowAssetsWithInterest",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getTotalSupplyAssetsWithInterest",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getUserBorrowedAmount",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "user",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "assets",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
         "name": "getUserPosition",
         "inputs": [
             {
@@ -354,6 +416,30 @@
                         "internalType": "uint256"
                     }
                 ]
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "getUserSuppliedAmount",
+        "inputs": [
+            {
+                "name": "id",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "user",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "assets",
+                "type": "uint256",
+                "internalType": "uint256"
             }
         ],
         "stateMutability": "view"

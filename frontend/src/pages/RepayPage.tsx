@@ -8,6 +8,7 @@ import {
   useGetMarketParams,
   useRepay,
   useGetUserPosition,
+  useGetUserBorrowAmount,
 } from "../hooks/Syphon.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
 import { useChainId } from "wagmi";
@@ -58,6 +59,9 @@ const RepayPage = () => {
     error: errorBorrowRate,
   } = useGetBorrowRate(marketParams?.irm, marketInfo);
 
+  const { userBorrowAmount, borrowAmountLoading, errorBorrowAmount } =
+    useGetUserBorrowAmount(syphonAddress, id);
+
   useEffect(() => {
     if (isSuccess) {
       navigate(`/markets/market/${id}`);
@@ -93,7 +97,8 @@ const RepayPage = () => {
     isLoadingMarketParams ||
     isLoadingBorrowRate ||
     isLoadingTokenBalance ||
-    isLoadingPosition
+    isLoadingPosition ||
+    borrowAmountLoading
   ) {
     return <div>.....Loading</div>;
   }
@@ -102,7 +107,8 @@ const RepayPage = () => {
     errorMarketInfo ||
     errorMarketParams ||
     errorBorrowRate ||
-    errorPosition
+    errorPosition ||
+    errorBorrowAmount
   ) {
     return (
       <div>
@@ -149,21 +155,11 @@ const RepayPage = () => {
             inputAmount={repayAmount}
             setInputAmount={setrepayAmount}
             token={marketParams.loanToken}
-            max={BigInt(
-              (position.borrowShares * marketInfo.totalBorrowAssets) /
-                marketInfo.totalBorrowShares,
-            )}
+            max={userBorrowAmount}
           />
 
           <button
-            disabled={
-              repayAmount === 0n ||
-              repayAmount >
-                BigInt(
-                  (position.borrowShares * marketInfo.totalBorrowAssets) /
-                    marketInfo.totalBorrowShares,
-                )
-            }
+            disabled={repayAmount === 0n || repayAmount > userBorrowAmount}
             onClick={() => repay(marketParams, id, repayAmount, 0)}
             className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >

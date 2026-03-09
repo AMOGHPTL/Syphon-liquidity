@@ -219,7 +219,7 @@ const BorrowPage = () => {
             />
 
             <button
-              disabled={collateralAmount > tokenBalance}
+              disabled={collateralAmount == 0n ||collateralAmount > tokenBalance}
               onClick={() =>
                 supplyCollateral(marketParams, id, collateralAmount)
               }
@@ -252,7 +252,7 @@ const BorrowPage = () => {
             )}
 
             <button
-              disabled={Number(formatEther(borrowAmount)) > maxBorrow}
+              disabled={borrowAmount == 0n ||Number(formatEther(borrowAmount)) > maxBorrow}
               onClick={() => borrow(marketParams, id, borrowAmount)}
               className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-md cursor-pointer disabled:bg-gray-500"
             >

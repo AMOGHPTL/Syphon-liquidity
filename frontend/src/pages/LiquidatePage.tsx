@@ -74,7 +74,9 @@ const LiquidatePage = () => {
       </div>
       {[
         ...new Map(
-          borrowedEvents.map((event: any) => [event.borrower, event]),
+          borrowedEvents
+            .filter((event: any) => event.borrowAmount > 0n)
+            .map((event: any) => [event.borrower, event]),
         ).values(),
       ].map((event) => (
         <BorrowPositionCard

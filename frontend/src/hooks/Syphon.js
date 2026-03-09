@@ -318,13 +318,6 @@ export function useBorrow(syphonAddress) {
   const borrow = async (marketParams, Id, amountToBorrow) => {
     if (!marketParams || !Id || !amountToBorrow) return;
 
-    await writeContractAsync({
-      address: marketParams.loanToken,
-      abi: erc20Abi,
-      functionName: "approve",
-      args: [syphonAddress, amountToBorrow],
-    });
-
     const txHash = await writeContractAsync({
       address: syphonAddress,
       abi: syphon,
@@ -462,8 +455,15 @@ export function useLiquidate(syphonAddress) {
   } = useWaitForTransactionReceipt({
     hash,
   });
-  const liquidate = async (marketParams, Id, toLiquidate) => {
+  const liquidate = async (marketParams, Id, toLiquidate, amount) => {
     if (!marketParams || !Id || !toLiquidate) return;
+
+    await writeContractAsync({
+      address: marketParams.loanToken,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [syphonAddress, amount],
+    });
 
     const txHash = await writeContractAsync({
       address: syphonAddress,
@@ -480,5 +480,51 @@ export function useLiquidate(syphonAddress) {
     isConfirming,
     isSuccess,
     error,
+  };
+}
+
+export function useGetUserBorrowAmount(syphonAddress, id, watch = true) {
+  const { address: user } = useAccount();
+  const result = useReadContract({
+    address: syphonAddress,
+    abi: syphon,
+    functionName: "getUserBorrowedAmount",
+    args: [id, user],
+    query: {
+      enabled: !!syphonAddress, // don't run if address missing
+      refetchInterval: watch ? 3000 : false, // auto refresh every 3s (optional)
+    },
+  });
+
+  const userBorrowAmount = result.data ? result.data : null;
+
+  return {
+    userBorrowAmount,
+    borrowAmountLoading: result.isLoading,
+    errorBorrowAmount: result.error,
+    refetch: result.refetch,
+  };
+}
+
+export function useGetUserSuppliedAmount(syphonAddress, id, watch = true) {
+  const { address: user } = useAccount();
+  const result = useReadContract({
+    address: syphonAddress,
+    abi: syphon,
+    functionName: "getUserSuppliedAmount",
+    args: [id, user],
+    query: {
+      enabled: !!syphonAddress, // don't run if address missing
+      refetchInterval: watch ? 3000 : false, // auto refresh every 3s (optional)
+    },
+  });
+
+  const userSuppliedAmount = result.data ? result.data : null;
+
+  return {
+    userSuppliedAmount,
+    suppliedAmountLoading: result.isLoading,
+    errorsuppliedAmount: result.error,
+    refetch: result.refetch,
   };
 }

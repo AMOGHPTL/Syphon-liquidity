@@ -59,8 +59,10 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
     uint256 constant OVER_COLLATERALIZED_RATE = 120e16;
     uint256 constant OVER_COLLATERALIZED_PRECISION = 1e18;
     uint256 constant HEALTHFACTOR_PRECISION = 1e18;
+    uint256 constant BAD_HEALTH_PRECISION = 12e17;
     uint256 constant ORACLE_SCALE_PRECISION = 1e18;
     uint256 constant INTEREST_PRECISION = 1e18;
+    uint256 constant SUPPLY_RATE_PRECISION = 75e16;
 
     modifier idMatchesParams(MarketParams memory marketParams, bytes32 id) {
         bytes32 expectedId = createId(marketParams);
@@ -352,10 +354,15 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
             return;
         }
         uint256 borrowRate = MockIrm(marketParams.irm).borrowRate(sMarket[id]);
+        uint256 supplyRate =
+            MockIrm(marketParams.irm).borrowRate(sMarket[id]).mulDiv(SUPPLY_RATE_PRECISION, INTEREST_PRECISION);
+        uint256 supplyInterest =
+            supplyRate.mulDiv(sMarket[id].totalSupplyAssets * elapsed, 365 days * INTEREST_PRECISION);
         uint256 interest = borrowRate.mulDiv(sMarket[id].totalBorrowAssets * elapsed, 365 days * INTEREST_PRECISION);
 
         sMarket[id].totalBorrowAssets += interest;
-        sMarket[id].lastUpdate = block.timestamp;
+        sMarket[id].totalSupplyAssets += supplyInterest;
+        sMarket[id].totalSupplyAssets += sMarket[id].lastUpdate = block.timestamp;
     }
 
     function _healthFactor(MarketParams memory marketParams, bytes32 id, address user) public view returns (uint256) {
@@ -371,7 +378,8 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         console.log("user shares value:", userSharesValue);
         uint256 collateralValueInLoanToken = Math.mulDiv(position.collateral, ORACLE_SCALE_PRECISION, collateralPrice);
         console.log("collateral value in loan token:", collateralValueInLoanToken);
-        uint256 healthFactor = Math.mulDiv(collateralValueInLoanToken, HEALTHFACTOR_PRECISION, userSharesValue);
+        uint256 healthFactor = (collateralValueInLoanToken / BAD_HEALTH_PRECISION) / userSharesValue;
+        console.log("health factor:", healthFactor);
         return healthFactor;
     }
 
@@ -389,5 +397,70 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
 
     function getMarketParams(bytes32 id) public view returns (MarketParams memory) {
         return sIdToMarketParam[id];
+    }
+
+    function getTotalBorrowAssetsWithInterest(bytes32 id) public view returns (uint256) {
+        Market memory market = sMarket[id];
+        if (market.lastUpdate == 0) return 0;
+
+        uint256 elapsed = block.timestamp - market.lastUpdate;
+        if (elapsed == 0 || market.totalBorrowAssets == 0) {
+            return market.totalBorrowAssets;
+        }
+
+        MarketParams memory params = sIdToMarketParam[id];
+        uint256 borrowRate = MockIrm(params.irm).borrowRate(market);
+
+        // Same interest calculation as in _accrueInterest
+        uint256 interest = borrowRate.mulDiv(market.totalBorrowAssets * elapsed, 365 days * INTEREST_PRECISION);
+
+        return market.totalBorrowAssets + interest;
+    }
+
+    function getTotalSupplyAssetsWithInterest(bytes32 id) public view returns (uint256) {
+        Market memory market = sMarket[id];
+        if (market.lastUpdate == 0) return 0;
+
+        uint256 elapsed = block.timestamp - market.lastUpdate;
+        if (elapsed == 0 || market.totalSupplyAssets == 0) {
+            return market.totalSupplyAssets;
+        }
+
+        MarketParams memory params = sIdToMarketParam[id];
+        uint256 supplyRate = MockIrm(params.irm).borrowRate(market).mulDiv(SUPPLY_RATE_PRECISION, INTEREST_PRECISION);
+
+        // Same interest calculation as in _accrueInterest
+        uint256 interest = supplyRate.mulDiv(market.totalSupplyAssets * elapsed, 365 days * INTEREST_PRECISION);
+
+        return market.totalSupplyAssets + interest;
+    }
+
+    function getUserSuppliedAmount(bytes32 id, address user) public view returns (uint256 assets) {
+        Market memory market = sMarket[id];
+        if (market.lastUpdate == 0 || market.totalSupplyShares == 0) {
+            return 0;
+        }
+
+        uint256 userShares = sPositions[id][user].supplyShares;
+        if (userShares == 0) return 0;
+
+        // Virtual total supply assets = current total borrow assets (because supply = borrow + interest)
+        uint256 virtualTotalSupply = getTotalSupplyAssetsWithInterest(id);
+
+        assets = userShares.mulDiv(virtualTotalSupply, market.totalSupplyShares);
+    }
+
+    function getUserBorrowedAmount(bytes32 id, address user) public view returns (uint256 assets) {
+        Market memory market = sMarket[id];
+        if (market.lastUpdate == 0 || market.totalBorrowShares == 0) {
+            return 0;
+        }
+
+        uint256 userShares = sPositions[id][user].borrowShares;
+        if (userShares == 0) return 0;
+
+        uint256 virtualTotalBorrow = getTotalBorrowAssetsWithInterest(id);
+
+        assets = userShares.mulDiv(virtualTotalBorrow, market.totalBorrowShares);
     }
 }

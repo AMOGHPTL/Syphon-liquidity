@@ -1,14 +1,22 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { getReverseTokens } from "../utils/utils.js";
 import Tokens from "../abi/tokenToAddress.json";
-import { useGetMarketInfo, useGetMarketParams } from "../hooks/Syphon.js";
+import {
+  useGetMarketInfo,
+  useGetMarketParams,
+  useGetUserSuppliedAmount,
+} from "../hooks/Syphon.js";
 import { useChainId } from "wagmi";
 import syphonAddresses from "../abi/SyphonAddresses.json";
 import { useGetBorrowRate } from "../hooks/Irm.js";
 import arrow from "../assets/icons/arrow-down-3101.svg";
 import { formatEther } from "viem";
 import NavBtn from "../components/low-level/NavBtn.js";
-import { useWithdraw, useGetUserPosition } from "../hooks/Syphon.js";
+import {
+  useWithdraw,
+  useGetUserPosition,
+  useGetUserBorrowAmount,
+} from "../hooks/Syphon.js";
 import MarketPositionTab from "../components/low-level/MarketPositionTab.js";
 
 const MarketPage = () => {
@@ -25,8 +33,6 @@ const MarketPage = () => {
   const contractAddresses = syphonAddresses as Record<number, string>;
 
   const syphonAddress = contractAddresses[chainId];
-
-  const { withdraw } = useWithdraw(syphonAddress);
 
   const {
     marketInfo,
@@ -52,18 +58,32 @@ const MarketPage = () => {
     error: errorPosition,
   } = useGetUserPosition(syphonAddress, id);
 
+  const { userBorrowAmount, borrowAmountLoading, errorBorrowAmount } =
+    useGetUserBorrowAmount(syphonAddress, id);
+
+  const { userSuppliedAmount, suppliedAmountLoading, errorsuppliedAmount } =
+    useGetUserSuppliedAmount(syphonAddress, id);
+
   // Handle loading
   if (
     isLoadingMarketInfo ||
     isLoadingMarketParams ||
     isLoadingBorrowRate ||
-    isLoadingPosition
+    isLoadingPosition ||
+    borrowAmountLoading ||
+    suppliedAmountLoading
   ) {
     return <div>.....Loading</div>;
   }
 
   // Handle errors separately so you can actually see what's wrong
-  if (errorMarketInfo || errorMarketParams || errorBorrowRate) {
+  if (
+    errorMarketInfo ||
+    errorMarketParams ||
+    errorBorrowRate ||
+    errorBorrowAmount ||
+    errorsuppliedAmount
+  ) {
     return (
       <div>
         {errorMarketInfo && <p>Market info error: {errorMarketInfo.message}</p>}
@@ -84,6 +104,8 @@ const MarketPage = () => {
   console.log("market params:", marketParams);
   console.log("borrow rate:", borrowRate);
   console.log("irm address:", marketParams.irm);
+  console.log("user borrow amount:", userBorrowAmount);
+  console.log("user supplied amount:", userSuppliedAmount);
 
   return (
     <div className="flex flex-col gap-[48px]">
@@ -156,9 +178,10 @@ const MarketPage = () => {
             </div>
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">ltv</p>
-              <p className="text-[24px]">
+              {/* <p className="text-[24px]">
                 {(BigInt(marketParams.lltv) * BigInt(100)) / BigInt(1e18)}%
-              </p>
+              </p> */}
+              <p className="text-[24px]">83.3%</p>
             </div>
           </div>
         </div>
@@ -198,10 +221,11 @@ const MarketPage = () => {
                     path="withdraw"
                     title="Liquidity"
                     value={formatEther(
-                      BigInt(
-                        (position.supplyShares * marketInfo.totalSupplyAssets) /
-                          marketInfo.totalSupplyShares,
-                      ),
+                      // BigInt(
+                      //   (position.supplyShares * marketInfo.totalSupplyAssets) /
+                      //     marketInfo.totalSupplyShares,
+                      // ),
+                      userSuppliedAmount,
                     )}
                   />
                 </div>
@@ -215,17 +239,18 @@ const MarketPage = () => {
                   token={addressToToken[marketParams.collateralToken]}
                 />
               )}
-              {position.supplyShares != 0n &&
+              {position.borrowShares != 0n &&
                 marketInfo.totalBorrowShares != 0 && (
                   <MarketPositionTab
                     id={id}
                     path="repay"
                     title="Borrow"
                     value={formatEther(
-                      BigInt(
-                        (position.borrowShares * marketInfo.totalBorrowAssets) /
-                          marketInfo.totalBorrowShares,
-                      ),
+                      // BigInt(
+                      //   (position.borrowShares * marketInfo.totalBorrowAssets) /
+                      //     marketInfo.totalBorrowShares,
+                      // ),
+                      userBorrowAmount,
                     )}
                     token={addressToToken[marketParams.loanToken]}
                   />

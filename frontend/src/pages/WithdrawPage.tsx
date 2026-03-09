@@ -8,6 +8,7 @@ import {
   useGetMarketParams,
   useWithdraw,
   useGetUserPosition,
+  useGetUserSuppliedAmount,
 } from "../hooks/Syphon.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
 import { useChainId } from "wagmi";
@@ -58,6 +59,9 @@ const WithdrawPage = () => {
     error: errorBorrowRate,
   } = useGetBorrowRate(marketParams?.irm, marketInfo);
 
+  const { userSuppliedAmount, suppliedAmountLoading, errorsuppliedAmount } =
+    useGetUserSuppliedAmount(syphonAddress, id);
+
   useEffect(() => {
     if (isSuccess) {
       navigate(`/markets/market/${id}`);
@@ -93,7 +97,8 @@ const WithdrawPage = () => {
     isLoadingMarketParams ||
     isLoadingBorrowRate ||
     isLoadingTokenBalance ||
-    isLoadingPosition
+    isLoadingPosition ||
+    suppliedAmountLoading
   ) {
     return <div>.....Loading</div>;
   }
@@ -102,7 +107,8 @@ const WithdrawPage = () => {
     errorMarketInfo ||
     errorMarketParams ||
     errorBorrowRate ||
-    errorPosition
+    errorPosition ||
+    errorsuppliedAmount
   ) {
     return (
       <div>
@@ -151,10 +157,7 @@ const WithdrawPage = () => {
             token={marketParams.loanToken}
             max={BigInt(
               Math.min(
-                Number(
-                  (position.supplyShares * marketInfo.totalSupplyAssets) /
-                    marketInfo.totalSupplyShares,
-                ),
+                Number(userSuppliedAmount),
                 Number(marketInfo.totalSupplyAssets) -
                   Number(marketInfo.totalBorrowAssets),
               ),
@@ -167,10 +170,7 @@ const WithdrawPage = () => {
               withdrawAmount >
                 BigInt(
                   Math.min(
-                    Number(
-                      (position.supplyShares * marketInfo.totalSupplyAssets) /
-                        marketInfo.totalSupplyShares,
-                    ),
+                    Number(userSuppliedAmount),
                     Number(marketInfo.totalSupplyAssets) -
                       Number(marketInfo.totalBorrowAssets),
                   ),

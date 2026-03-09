@@ -9,6 +9,7 @@ import { getReverseTokens } from "../../utils/utils.js";
 import { formatEther, formatUnits } from "viem";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
 // Sub-component that enriches a single borrow event with market + position data
 function BorrowPositionCard({
@@ -19,6 +20,8 @@ function BorrowPositionCard({
   syphonAddress: string;
 }) {
   const addressToToken = getReverseTokens(Tokens);
+
+  const navigate = useNavigate();
 
   const { marketParams } = useGetMarketParams(syphonAddress, event.marketId);
   const { marketInfo } = useGetMarketInfo(syphonAddress, event.marketId);
@@ -44,6 +47,7 @@ function BorrowPositionCard({
   useEffect(() => {
     if (isSuccess) {
       toast.success(`Liquidated ${event.borrower} succesfully`);
+      navigate(`/liquidate}`);
     }
   }, [isSuccess]);
 
@@ -64,6 +68,7 @@ function BorrowPositionCard({
         : "Transaction failed";
 
       toast.error(message);
+      navigate("/liquidate");
     }
   }, [errorLiquidate]);
 
@@ -80,7 +85,8 @@ function BorrowPositionCard({
   console.log("collateral value:", positions.collateral);
 
   return (
-    borrowValue * 130n >= positions.collateral * 100n && (
+    borrowValue * 120n >= positions.collateral * 100n &&
+    borrowValue != 0n && (
       <div className="w-full p-[24px] grid grid-cols-[repeat(5,1fr)] items-center overflow-hidden bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer">
         <div className="flex items-center gap-[8px]">
           <div className="flex items-center gap-[4px]">
@@ -105,10 +111,16 @@ function BorrowPositionCard({
         <p className=" ">${formatEther(borrowValue)}</p>
         <p>${formatEther(positions.collateral)}</p>
         <button
+          disabled={event.borrowAmount == 0n}
           onClick={() => {
-            liquidate(marketParams, event.marketId, event.borrower);
+            liquidate(
+              marketParams,
+              event.marketId,
+              event.borrower,
+              positions.collateral,
+            );
           }}
-          className="bg-blue-600 px-[12px] py-[8px] rounded-full cursor-pointer"
+          className="bg-blue-600 px-[12px] py-[8px] rounded-full cursor-pointer disabled:bg-gray-600"
         >
           Liquidate
         </button>
