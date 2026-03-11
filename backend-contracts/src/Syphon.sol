@@ -56,10 +56,8 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
     mapping(bytes32 id => mapping(address => Position)) sPositions;
     bytes32[] sMarketIds;
     uint256 constant SHARE_PRECISION = 1e18;
-    uint256 constant OVER_COLLATERALIZED_RATE = 120e16;
     uint256 constant OVER_COLLATERALIZED_PRECISION = 1e18;
     uint256 constant HEALTHFACTOR_PRECISION = 1e18;
-    uint256 constant BAD_HEALTH_PRECISION = 12e17;
     uint256 constant ORACLE_SCALE_PRECISION = 1e18;
     uint256 constant INTEREST_PRECISION = 1e18;
     uint256 constant SUPPLY_RATE_PRECISION = 75e16;
@@ -201,6 +199,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         amountIsZero(collateralAmount)
         marketExists(id)
     {
+        _accrueInterest(marketParams, id);
         sMarket[id].lastUpdate = block.timestamp;
         sPositions[id][msg.sender].collateral += collateralAmount;
         IERC20(marketParams.collateralToken).safeTransferFrom(msg.sender, address(this), collateralAmount);
@@ -215,6 +214,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         amountIsZero(collateralToWithdraw)
         marketExists(id)
     {
+        _accrueInterest(marketParams, id);
         sMarket[id].lastUpdate = block.timestamp;
         sPositions[id][msg.sender].collateral -= collateralToWithdraw;
 
@@ -234,12 +234,16 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         amountIsZero(amountToBorrow)
         marketExists(id)
     {
+        _accrueInterest(marketParams, id);
         Position memory position = sPositions[id][msg.sender];
         Market memory market = sMarket[id];
 
         uint256 collateralPrice = IOracle(marketParams.oracle).price();
 
         uint256 amountToBorrowInCollateralToken = Math.mulDiv(amountToBorrow, ORACLE_SCALE_PRECISION, collateralPrice);
+
+        uint256 OVER_COLLATERALIZED_RATE =
+            OVER_COLLATERALIZED_PRECISION.mulDiv(OVER_COLLATERALIZED_PRECISION, marketParams.lltv);
 
         uint256 requiredCollateral =
             (amountToBorrowInCollateralToken * OVER_COLLATERALIZED_RATE) / OVER_COLLATERALIZED_PRECISION;
@@ -282,7 +286,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         if (amountToRepay != 0 && sharesToRepay != 0) {
             revert Syphon__AmbiguousRepayInput();
         }
-        _accrueInterest(marketParams, id);
+        _accrueBothInterest(marketParams, id);
         uint256 sharesToBurn;
         uint256 repayAmount;
         Market memory market = sMarket[id];
@@ -353,6 +357,22 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
             return;
         }
         uint256 borrowRate = MockIrm(marketParams.irm).borrowRate(sMarket[id]);
+
+        uint256 interest = borrowRate.mulDiv(sMarket[id].totalBorrowAssets * elapsed, 365 days * INTEREST_PRECISION);
+
+        sMarket[id].totalBorrowAssets += interest;
+
+        sMarket[id].lastUpdate = block.timestamp;
+    }
+
+    function _accrueBothInterest(MarketParams memory marketParams, bytes32 id) internal {
+        uint256 elapsed = block.timestamp - sMarket[id].lastUpdate;
+        if (elapsed == 0) return;
+        if (sMarket[id].totalBorrowAssets == 0) {
+            sMarket[id].lastUpdate = block.timestamp;
+            return;
+        }
+        uint256 borrowRate = MockIrm(marketParams.irm).borrowRate(sMarket[id]);
         uint256 supplyRate =
             MockIrm(marketParams.irm).borrowRate(sMarket[id]).mulDiv(SUPPLY_RATE_PRECISION, INTEREST_PRECISION);
         uint256 supplyInterest =
@@ -367,6 +387,8 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
     function _healthFactor(MarketParams memory marketParams, bytes32 id, address user) public view returns (uint256) {
         Market memory market = sMarket[id];
         Position memory position = sPositions[id][user];
+
+        uint256 BAD_HEALTH_PRECISION = ORACLE_SCALE_PRECISION.mulDiv(ORACLE_SCALE_PRECISION, marketParams.lltv);
 
         if (position.borrowShares == 0) return type(uint256).max;
 
