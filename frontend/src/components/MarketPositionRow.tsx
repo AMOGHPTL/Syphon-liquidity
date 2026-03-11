@@ -8,13 +8,19 @@ import type { Hex } from "viem";
 import { getReverseTokens } from "../utils/utils.js";
 import Tokens from "../abi/tokenToAddress.json";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 interface Props {
   syphonAddress: string;
   marketId: Hex;
+  onHasPosition?: (hasPosition: boolean) => void;
 }
 
-const MarketPositionRow = ({ syphonAddress, marketId }: Props) => {
+const MarketPositionRow = ({
+  syphonAddress,
+  marketId,
+  onHasPosition,
+}: Props) => {
   const navigate = useNavigate();
   const addressToToken = getReverseTokens(Tokens);
   const {
@@ -33,6 +39,16 @@ const MarketPositionRow = ({ syphonAddress, marketId }: Props) => {
     error: errorMarketParams,
   } = useGetMarketParams(syphonAddress, marketId);
 
+  const hasPosition =
+    (position?.supplyShares ?? 0n) > 0n ||
+    (position?.borrowShares ?? 0n) > 0n ||
+    (position?.collateral ?? 0n) > 0n;
+
+  useEffect(() => {
+    if (!posLoading && !infoLoading && !paramsLoading) {
+      onHasPosition?.(hasPosition);
+    }
+  }, [hasPosition, posLoading, infoLoading, paramsLoading]);
   if (posLoading || infoLoading || paramsLoading) {
     return (
       <div>
@@ -45,11 +61,6 @@ const MarketPositionRow = ({ syphonAddress, marketId }: Props) => {
 
   if (errorPosition || errorMarketInfo || errorMarketParams)
     return <p>Error</p>;
-
-  const hasPosition =
-    (position?.supplyShares ?? 0n) > 0n ||
-    (position?.borrowShares ?? 0n) > 0n ||
-    (position?.collateral ?? 0n) > 0n;
 
   if (!hasPosition) return null;
 
