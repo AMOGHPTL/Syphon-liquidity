@@ -377,9 +377,8 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         console.log("user shares value:", userSharesValue);
         uint256 collateralValueInLoanToken = Math.mulDiv(position.collateral, ORACLE_SCALE_PRECISION, collateralPrice);
         console.log("collateral value in loan token:", collateralValueInLoanToken);
-        uint256 healthFactor = Math.mulDiv(
-            collateralValueInLoanToken, 1e18, Math.mulDiv(market.totalBorrowAssets, BAD_HEALTH_PRECISION, 1e18)
-        );
+        uint256 healthFactor =
+            Math.mulDiv(collateralValueInLoanToken, 1e18, Math.mulDiv(userSharesValue, BAD_HEALTH_PRECISION, 1e18));
         console.log("health factor:", healthFactor);
         return healthFactor;
     }
