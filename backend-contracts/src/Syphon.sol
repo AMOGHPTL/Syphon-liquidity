@@ -143,7 +143,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         amountIsZero(amountToSupply)
         marketExists(id)
     {
-        _accrueInterest(marketParams, id);
+        sMarket[id].lastUpdate = block.timestamp;
         if (sMarket[id].totalSupplyAssets == 0) {
             uint256 shares = amountToSupply;
             sMarket[id].totalSupplyShares = shares;
@@ -172,7 +172,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         }
         uint256 sharesToBurn;
         uint256 amountToGive;
-        _accrueInterest(marketParams, id);
+        sMarket[id].lastUpdate = block.timestamp;
 
         if (amountToWithdraw == 0) {
             sharesToBurn = sharesToWithdraw;
@@ -201,7 +201,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         amountIsZero(collateralAmount)
         marketExists(id)
     {
-        _accrueInterest(marketParams, id);
+        sMarket[id].lastUpdate = block.timestamp;
         sPositions[id][msg.sender].collateral += collateralAmount;
         IERC20(marketParams.collateralToken).safeTransferFrom(msg.sender, address(this), collateralAmount);
 
@@ -215,7 +215,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         amountIsZero(collateralToWithdraw)
         marketExists(id)
     {
-        _accrueInterest(marketParams, id);
+        sMarket[id].lastUpdate = block.timestamp;
         sPositions[id][msg.sender].collateral -= collateralToWithdraw;
 
         if (_healthFactor(marketParams, id, msg.sender) < HEALTHFACTOR_PRECISION) {
@@ -234,7 +234,6 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         amountIsZero(amountToBorrow)
         marketExists(id)
     {
-        _accrueInterest(marketParams, id);
         Position memory position = sPositions[id][msg.sender];
         Market memory market = sMarket[id];
 
@@ -318,10 +317,10 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         idMatchesParams(marketParams, id)
         marketExists(id)
     {
+        _accrueInterest(marketParams, id);
         uint256 sharesToBurn;
         uint256 assetsToBurn;
         uint256 liquidationIncentive;
-        _accrueInterest(marketParams, id);
         if (_healthFactor(marketParams, id, toLiquidate) >= HEALTHFACTOR_PRECISION) {
             revert Syphon__HealthyPosition();
         }
@@ -362,7 +361,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
 
         sMarket[id].totalBorrowAssets += interest;
         sMarket[id].totalSupplyAssets += supplyInterest;
-        sMarket[id].totalSupplyAssets += sMarket[id].lastUpdate = block.timestamp;
+        sMarket[id].lastUpdate = block.timestamp;
     }
 
     function _healthFactor(MarketParams memory marketParams, bytes32 id, address user) public view returns (uint256) {
@@ -378,7 +377,9 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         console.log("user shares value:", userSharesValue);
         uint256 collateralValueInLoanToken = Math.mulDiv(position.collateral, ORACLE_SCALE_PRECISION, collateralPrice);
         console.log("collateral value in loan token:", collateralValueInLoanToken);
-        uint256 healthFactor = (collateralValueInLoanToken / BAD_HEALTH_PRECISION) / userSharesValue;
+        uint256 healthFactor = Math.mulDiv(
+            collateralValueInLoanToken, 1e18, Math.mulDiv(market.totalBorrowAssets, BAD_HEALTH_PRECISION, 1e18)
+        );
         console.log("health factor:", healthFactor);
         return healthFactor;
     }

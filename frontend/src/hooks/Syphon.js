@@ -528,3 +528,30 @@ export function useGetUserSuppliedAmount(syphonAddress, id, watch = true) {
     refetch: result.refetch,
   };
 }
+
+export function useGetLiquidatingUsersBorrowAmount(
+  syphonAddress,
+  id,
+  user,
+  watch = true,
+) {
+  const result = useReadContract({
+    address: syphonAddress,
+    abi: syphon,
+    functionName: "getUserBorrowedAmount",
+    args: [id, user],
+    query: {
+      enabled: !!syphonAddress, // don't run if address missing
+      refetchInterval: watch ? 3000 : false, // auto refresh every 3s (optional)
+    },
+  });
+
+  const userBorrowAmount = result.data ? result.data : null;
+
+  return {
+    userBorrowAmount,
+    borrowAmountLoading: result.isLoading,
+    errorBorrowAmount: result.error,
+    refetch: result.refetch,
+  };
+}

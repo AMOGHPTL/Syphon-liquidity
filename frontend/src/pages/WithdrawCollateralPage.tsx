@@ -8,6 +8,7 @@ import {
   useGetMarketParams,
   useWithdrawCollateral,
   useGetUserPosition,
+  useGetUserBorrowAmount,
 } from "../hooks/Syphon.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
 import { useChainId } from "wagmi";
@@ -59,6 +60,9 @@ const WithdrawCollateralPage = () => {
     error: errorBorrowRate,
   } = useGetBorrowRate(marketParams?.irm, marketInfo);
 
+  const { userBorrowAmount, borrowAmountLoading, errorBorrowAmount } =
+    useGetUserBorrowAmount(syphonAddress, id);
+
   useEffect(() => {
     if (isSuccess) {
       navigate(`/markets/market/${id}`);
@@ -94,7 +98,8 @@ const WithdrawCollateralPage = () => {
     isLoadingMarketParams ||
     isLoadingBorrowRate ||
     isLoadingTokenBalance ||
-    isLoadingPosition
+    isLoadingPosition ||
+    borrowAmountLoading
   ) {
     return <div>.....Loading</div>;
   }
@@ -103,7 +108,8 @@ const WithdrawCollateralPage = () => {
     errorMarketInfo ||
     errorMarketParams ||
     errorBorrowRate ||
-    errorPosition
+    errorPosition ||
+    errorBorrowAmount
   ) {
     return (
       <div>
@@ -161,7 +167,11 @@ const WithdrawCollateralPage = () => {
             inputAmount={withdrawAmount}
             setInputAmount={setwithdrawAmount}
             token={marketParams.loanToken}
-            max={position.collateral - (userBorrowValue * 130n) / 100n}
+            max={(() => {
+              const minCollateral = (userBorrowAmount * 120n) / 100n;
+              const maxWithdraw = position.collateral - minCollateral;
+              return maxWithdraw > 0n ? maxWithdraw : 0n;
+            })()}
           />
 
           <button

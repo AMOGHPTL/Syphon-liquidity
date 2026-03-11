@@ -127,6 +127,8 @@ const WithdrawPage = () => {
 
   const tokenSymbol = addressToToken[marketParams.loanToken];
 
+  console.log("withdraw amount:", withdrawAmount);
+
   return (
     <div className="flex flex-col gap-[48px]">
       <div
@@ -155,27 +157,33 @@ const WithdrawPage = () => {
             inputAmount={withdrawAmount}
             setInputAmount={setwithdrawAmount}
             token={marketParams.loanToken}
-            max={BigInt(
-              Math.min(
-                Number(userSuppliedAmount),
-                Number(marketInfo.totalSupplyAssets) -
-                  Number(marketInfo.totalBorrowAssets),
-              ),
-            )}
+            max={
+              (() => {
+                const userAssets =
+                  (position.supplyShares * marketInfo.totalSupplyAssets) /
+                  marketInfo.totalSupplyShares;
+                const availableLiquidity =
+                  marketInfo.totalSupplyAssets - marketInfo.totalBorrowAssets;
+                return userAssets < availableLiquidity
+                  ? userAssets
+                  : availableLiquidity;
+              })() as unknown as bigint
+            }
           />
 
           <button
-            disabled={
-              withdrawAmount === 0n ||
-              withdrawAmount >
-                BigInt(
-                  Math.min(
-                    Number(userSuppliedAmount),
-                    Number(marketInfo.totalSupplyAssets) -
-                      Number(marketInfo.totalBorrowAssets),
-                  ),
-                )
-            }
+            disabled={(() => {
+              const userAssets =
+                (position.supplyShares * marketInfo.totalSupplyAssets) /
+                marketInfo.totalSupplyShares;
+              const availableLiquidity =
+                marketInfo.totalSupplyAssets - marketInfo.totalBorrowAssets;
+              const max =
+                userAssets < availableLiquidity
+                  ? userAssets
+                  : availableLiquidity;
+              return withdrawAmount === 0n || withdrawAmount > max;
+            })()}
             onClick={() => withdraw(marketParams, id, withdrawAmount, 0)}
             className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >

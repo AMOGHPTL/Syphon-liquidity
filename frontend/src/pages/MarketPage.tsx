@@ -221,11 +221,10 @@ const MarketPage = () => {
                     path="withdraw"
                     title="Liquidity"
                     value={formatEther(
-                      // BigInt(
-                      //   (position.supplyShares * marketInfo.totalSupplyAssets) /
-                      //     marketInfo.totalSupplyShares,
-                      // ),
-                      userSuppliedAmount,
+                      BigInt(
+                        (position.supplyShares * marketInfo.totalSupplyAssets) /
+                          marketInfo.totalSupplyShares,
+                      ),
                     )}
                   />
                 </div>

@@ -3,6 +3,7 @@ import {
   useGetUsersPosition,
   useGetMarketInfo,
   useLiquidate,
+  useGetLiquidatingUsersBorrowAmount,
 } from "../../hooks/Syphon.js";
 import Tokens from "../../abi/tokenToAddress.json";
 import { getReverseTokens } from "../../utils/utils.js";
@@ -30,6 +31,12 @@ function BorrowPositionCard({
     event.marketId,
     event.borrower,
   ); // you may need to adjust this if getUserPosition uses msg.sender
+  const { userBorrowAmount, borrowAmountLoading, errorBorrowAmount } =
+    useGetLiquidatingUsersBorrowAmount(
+      syphonAddress,
+      event.marketId,
+      event.borrower,
+    );
 
   const {
     liquidate,
@@ -72,7 +79,8 @@ function BorrowPositionCard({
     }
   }, [errorLiquidate]);
 
-  if (isLoading || error) return <p>Loading...</p>;
+  if (isLoading || error || borrowAmountLoading || errorBorrowAmount)
+    return <p>Loading...</p>;
 
   let borrowValue = 0n;
   if (positions.borrowshares != 0n && marketInfo.totalBorrowShares != 0n) {
@@ -83,10 +91,11 @@ function BorrowPositionCard({
 
   console.log("borrowValue:", borrowValue);
   console.log("collateral value:", positions.collateral);
+  console.log("users borrow amount:", userBorrowAmount);
 
   return (
-    borrowValue * 120n >= positions.collateral * 100n &&
-    borrowValue != 0n && (
+    userBorrowAmount * 120n > positions.collateral * 100n &&
+    userBorrowAmount != 0n && (
       <div className="w-full p-[24px] grid grid-cols-[repeat(5,1fr)] items-center overflow-hidden bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer">
         <div className="flex items-center gap-[8px]">
           <div className="flex items-center gap-[4px]">
@@ -108,8 +117,8 @@ function BorrowPositionCard({
           </div>
         </div>
         <p>{truncate(event.borrower)}</p>
-        <p className=" ">${formatEther(borrowValue)}</p>
-        <p>${formatEther(positions.collateral)}</p>
+        <p className=" ">${Number(formatEther(userBorrowAmount)).toFixed(2)}</p>
+        <p>${Number(formatEther(positions.collateral)).toFixed(2)}</p>
         <button
           disabled={event.borrowAmount == 0n}
           onClick={() => {
@@ -117,7 +126,7 @@ function BorrowPositionCard({
               marketParams,
               event.marketId,
               event.borrower,
-              positions.collateral,
+              userBorrowAmount,
             );
           }}
           className="bg-blue-600 px-[12px] py-[8px] rounded-full cursor-pointer disabled:bg-gray-600"
