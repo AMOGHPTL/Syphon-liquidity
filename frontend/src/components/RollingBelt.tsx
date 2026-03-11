@@ -23,7 +23,7 @@ export default function RollingBelt() {
         {[...slides, ...slides].map((slide, index) => (
           <div
             key={index}
-            className="flex flex-col items-center bg-black px-10 py-6 w-[300px] rounded-[16px] border border-gray-500 gap-6 shrink-0"
+            className="flex flex-col items-center bg-black/40 px-10 py-6 w-[300px] rounded-[16px] border border-gray-500 gap-6 shrink-0"
           >
             <img src={slide.img} alt="" className="w-[56px]" />
             <p className="text-[24px]">{slide.text}</p>
