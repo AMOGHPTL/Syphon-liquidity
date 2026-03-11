@@ -19,6 +19,7 @@ struct Position {
 struct Market {
     uint256 totalSupplyAssets;
     uint256 totalSupplyShares;
+    uint256 totalBorrowPrincipal;
     uint256 totalBorrowAssets;
     uint256 totalBorrowShares;
     uint256 lastUpdate;

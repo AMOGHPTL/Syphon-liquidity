@@ -240,7 +240,11 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
 
         uint256 collateralPrice = IOracle(marketParams.oracle).price();
 
+        console.log("collateral price:", collateralPrice);
+
         uint256 amountToBorrowInCollateralToken = Math.mulDiv(amountToBorrow, ORACLE_SCALE_PRECISION, collateralPrice);
+
+        console.log("amount To Borrow In CollateralToken:", amountToBorrowInCollateralToken);
 
         uint256 OVER_COLLATERALIZED_RATE =
             OVER_COLLATERALIZED_PRECISION.mulDiv(OVER_COLLATERALIZED_PRECISION, marketParams.lltv);
@@ -251,7 +255,12 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         if (position.collateral < requiredCollateral) {
             revert Syphon__UnderCollateralized();
         }
-        if (amountToBorrow > (market.totalSupplyAssets - market.totalBorrowAssets)) {
+        console.log("not under collaterlized");
+        console.log("amount to borrow:", amountToBorrow);
+        console.log("total supply assets:", market.totalSupplyAssets);
+        console.log("total borrow asset:", market.totalBorrowAssets);
+        console.log("liquidity left:", market.totalSupplyAssets - market.totalBorrowAssets);
+        if (amountToBorrow > (market.totalSupplyAssets - market.totalBorrowPrincipal)) {
             revert Syphon__InsufficientLoanSupply();
         }
 
@@ -259,11 +268,13 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
             uint256 shares = amountToBorrow;
             sMarket[id].totalBorrowShares = shares;
             sMarket[id].totalBorrowAssets = amountToBorrow;
+            sMarket[id].totalBorrowPrincipal = amountToBorrow;
             sPositions[id][msg.sender].borrowShares = shares;
         } else {
             uint256 shares = amountToBorrow.mulDiv(sMarket[id].totalBorrowShares, sMarket[id].totalBorrowAssets);
             sMarket[id].totalBorrowShares += shares;
             sMarket[id].totalBorrowAssets += amountToBorrow;
+            sMarket[id].totalBorrowPrincipal += amountToBorrow;
             sPositions[id][msg.sender].borrowShares += shares;
         }
 
@@ -306,9 +317,11 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
 
         repayAmount = Math.mulDiv(sharesToBurn, market.totalBorrowAssets, market.totalBorrowShares);
         console.log("repayAmount:", repayAmount);
+        uint256 principalRepaid = Math.mulDiv(sharesToBurn, market.totalBorrowPrincipal, market.totalBorrowShares);
 
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= repayAmount;
+        sMarket[id].totalBorrowPrincipal -= principalRepaid;
         sPositions[id][msg.sender].borrowShares -= sharesToBurn;
         IERC20(marketParams.loanToken).safeTransferFrom(msg.sender, address(this), repayAmount);
 
@@ -336,9 +349,11 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         sharesToBurn = position.borrowShares;
         console.log("shares to burn", sharesToBurn);
         assetsToBurn = Math.mulDiv(sharesToBurn, market.totalBorrowAssets, market.totalBorrowShares);
+        uint256 principalLiquidated = Math.mulDiv(sharesToBurn, market.totalBorrowPrincipal, market.totalBorrowShares);
         console.log("assets to burn:", assetsToBurn);
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= assetsToBurn;
+        sMarket[id].totalBorrowPrincipal -= principalLiquidated;
         sPositions[id][toLiquidate].borrowShares = 0;
         sPositions[id][toLiquidate].collateral = 0;
 
@@ -485,4 +500,9 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
 
         assets = userShares.mulDiv(virtualTotalBorrow, market.totalBorrowShares);
     }
+
+    function getAvailableLiquidity(bytes32 id) public view returns (uint256) {
+    Market memory market = sMarket[id];
+    return market.totalSupplyAssets - market.totalBorrowPrincipal;
+}
 }
