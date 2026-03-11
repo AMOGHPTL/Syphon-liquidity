@@ -82,19 +82,12 @@ function BorrowPositionCard({
   if (isLoading || error || borrowAmountLoading || errorBorrowAmount)
     return <p>Loading...</p>;
 
-  let borrowValue = 0n;
-  if (positions.borrowshares != 0n && marketInfo.totalBorrowShares != 0n) {
-    borrowValue =
-      BigInt(positions.borrowShares * marketInfo.totalBorrowAssets) /
-      marketInfo.totalBorrowShares;
-  }
-
-  console.log("borrowValue:", borrowValue);
   console.log("collateral value:", positions.collateral);
   console.log("users borrow amount:", userBorrowAmount);
 
   return (
-    userBorrowAmount * 120n > positions.collateral * 100n &&
+    BigInt(userBorrowAmount ?? 0n) * 120n >
+      BigInt(positions.collateral ?? 0n) * 100n &&
     userBorrowAmount != 0n && (
       <div className="w-full p-[24px] grid grid-cols-[repeat(5,1fr)] items-center overflow-hidden bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer">
         <div className="flex items-center gap-[8px]">

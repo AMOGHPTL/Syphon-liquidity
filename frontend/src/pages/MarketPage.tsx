@@ -6,6 +6,7 @@ import {
   useGetMarketParams,
   useGetUserSuppliedAmount,
 } from "../hooks/Syphon.js";
+import { useGetOraclePrice } from "../hooks/Oracle.js";
 import { useChainId } from "wagmi";
 import syphonAddresses from "../abi/SyphonAddresses.json";
 import { useGetBorrowRate } from "../hooks/Irm.js";
@@ -64,6 +65,9 @@ const MarketPage = () => {
   const { userSuppliedAmount, suppliedAmountLoading, errorsuppliedAmount } =
     useGetUserSuppliedAmount(syphonAddress, id);
 
+  const { oraclePrice, oraclePriceLoading, errorOraclePrice } =
+    useGetOraclePrice(marketParams?.oracle);
+
   // Handle loading
   if (
     isLoadingMarketInfo ||
@@ -71,7 +75,8 @@ const MarketPage = () => {
     isLoadingBorrowRate ||
     isLoadingPosition ||
     borrowAmountLoading ||
-    suppliedAmountLoading
+    suppliedAmountLoading ||
+    oraclePriceLoading
   ) {
     return <div>.....Loading</div>;
   }
@@ -82,7 +87,8 @@ const MarketPage = () => {
     errorMarketParams ||
     errorBorrowRate ||
     errorBorrowAmount ||
-    errorsuppliedAmount
+    errorsuppliedAmount ||
+    errorOraclePrice
   ) {
     return (
       <div>
@@ -171,6 +177,20 @@ const MarketPage = () => {
               </p>
             </div>
             <div className="flex flex-col gap-[12px]">
+              <p className="text-[16px]">Utilization</p>
+              <p className="text-[24px]">
+                {marketInfo.totalBorrowAssets
+                  ? (marketInfo.totalBorrowAssets /
+                      BigInt(
+                        marketInfo.totalSupplyAssets -
+                          marketInfo.totalBorrowAssets,
+                      )) *
+                    100n
+                  : "0"}
+                %
+              </p>
+            </div>
+            <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Rate</p>
               <p className="text-[24px]">
                 {((Number(borrowRate) / 1e18) * 100).toFixed(2)}%
@@ -181,7 +201,46 @@ const MarketPage = () => {
               {/* <p className="text-[24px]">
                 {(BigInt(marketParams.lltv) * BigInt(100)) / BigInt(1e18)}%
               </p> */}
-              <p className="text-[24px]">83.3%</p>
+              <p className="text-[24px]">
+                {BigInt(marketParams.lltv) / BigInt(1e16)}%{" "}
+              </p>
+            </div>
+          </div>
+        </div>
+        {/* more market info */}
+        <div className="w-fit flex gap-[48px] py-[12px] px-[24px]  bg-white/5 rounded-2xl">
+          <div className="flex w-[330px] flex-col gap-[24px] pr-[24px] border-r-2 border-white/10">
+            <div className="flex justify-between">
+              <p>Collateral Token:</p>
+              <div className="flex items-center gap-[6px]">
+                <img
+                  src={`../../public/tokens/${addressToToken[marketParams.collateralToken]}.svg`}
+                  alt=""
+                  className="w-[24px]"
+                />
+                <p>{addressToToken[marketParams.collateralToken]}</p>
+              </div>
+            </div>
+            <div className="flex justify-between">
+              <p>Loan Token:</p>
+              <div className="flex items-center gap-[6px]">
+                <img
+                  src={`../../public/tokens/${addressToToken[marketParams.loanToken]}.svg`}
+                  alt=""
+                  className="w-[24px]"
+                />
+                <p>{addressToToken[marketParams.loanToken]}</p>
+              </div>
+            </div>
+          </div>
+          <div className="w-[300px] flex flex-col gap-[24px]">
+            <div className="flex justify-between">
+              <p>oracle price:</p>
+              <p>
+                {addressToToken[marketParams.collateralToken]} /{" "}
+                {addressToToken[marketParams.loanToken]} ={" "}
+                {formatEther(oraclePrice)}
+              </p>
             </div>
           </div>
         </div>
@@ -199,12 +258,6 @@ const MarketPage = () => {
               <NavBtn to={`/markets/supply/${id}`} text="supply" />
             </div>
           </div>
-          {/* <button
-            onClick={() => withdraw(marketParams, id, 10e18, 0)}
-            className="p-[12px] cursor-pointer bg-blue-600 rounded-full"
-          >
-            Withdraw
-          </button> */}
         </div>
         {/* poistions */}
         <div className="flex flex-col gap-[32px]">

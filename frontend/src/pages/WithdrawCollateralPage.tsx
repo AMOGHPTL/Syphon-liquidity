@@ -128,17 +128,6 @@ const WithdrawCollateralPage = () => {
 
   const tokenSymbol = addressToToken[marketParams.collateralToken];
 
-  let userBorrowValue = 0n;
-
-  if (marketInfo.totalBorrowShares != 0n) {
-    userBorrowValue = BigInt(
-      (position.borrowShares * marketInfo.totalBorrowAssets) /
-        marketInfo.totalBorrowShares,
-    );
-  }
-
-  console.log(userBorrowValue);
-
   return (
     <div className="flex flex-col gap-[48px]">
       <div
@@ -168,8 +157,10 @@ const WithdrawCollateralPage = () => {
             setInputAmount={setwithdrawAmount}
             token={marketParams.loanToken}
             max={(() => {
-              const minCollateral = (userBorrowAmount * 120n) / 100n;
-              const maxWithdraw = position.collateral - minCollateral;
+              const minCollateral =
+                (BigInt(userBorrowAmount ?? 0) * 120n) / 100n;
+              const maxWithdraw =
+                BigInt(position?.collateral ?? 0) - minCollateral;
               return maxWithdraw > 0n ? maxWithdraw : 0n;
             })()}
           />
@@ -178,7 +169,8 @@ const WithdrawCollateralPage = () => {
             disabled={
               withdrawAmount === 0n ||
               withdrawAmount >
-                position.collateral - (userBorrowValue * 120n) / 100n
+                BigInt(position?.collateral ?? 0) -
+                  (BigInt(userBorrowAmount ?? 0) * 120n) / 100n
             }
             onClick={() =>
               withdrawCollateral(marketParams, id, withdrawAmount, 0)
