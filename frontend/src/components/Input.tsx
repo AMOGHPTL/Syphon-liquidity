@@ -7,11 +7,13 @@ const Input = ({
   setInputAmount,
   token,
   max,
+  price,
 }: {
   inputAmount: bigint;
   setInputAmount: React.Dispatch<React.SetStateAction<bigint>>;
-  token: string;
+  token?: string;
   max?: bigint;
+  price?: bigint;
 }) => {
   const [displayValue, setDisplayValue] = useState(""); // ADD THIS
 
@@ -44,7 +46,12 @@ const Input = ({
       />
 
       <div className="flex items-center justify-between">
-        <p>${displayValue || "0.00"}</p>
+        <p>
+          $
+          {price
+            ? formatEther(BigInt(displayValue) * BigInt(price))
+            : displayValue || "0.00"}
+        </p>
 
         <p
           onClick={() => {

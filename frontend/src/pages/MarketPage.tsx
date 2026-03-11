@@ -17,6 +17,7 @@ import {
   useWithdraw,
   useGetUserPosition,
   useGetUserBorrowAmount,
+  useGetLiquidity,
 } from "../hooks/Syphon.js";
 import MarketPositionTab from "../components/low-level/MarketPositionTab.js";
 
@@ -68,6 +69,11 @@ const MarketPage = () => {
   const { oraclePrice, oraclePriceLoading, errorOraclePrice } =
     useGetOraclePrice(marketParams?.oracle);
 
+  const { liquidity, isLoadingLiquidity, errorLiquidity } = useGetLiquidity(
+    syphonAddress,
+    id,
+  );
+
   // Handle loading
   if (
     isLoadingMarketInfo ||
@@ -76,7 +82,8 @@ const MarketPage = () => {
     isLoadingPosition ||
     borrowAmountLoading ||
     suppliedAmountLoading ||
-    oraclePriceLoading
+    oraclePriceLoading ||
+    isLoadingLiquidity
   ) {
     return <div>.....Loading</div>;
   }
@@ -88,7 +95,8 @@ const MarketPage = () => {
     errorBorrowRate ||
     errorBorrowAmount ||
     errorsuppliedAmount ||
-    errorOraclePrice
+    errorOraclePrice ||
+    errorLiquidity
   ) {
     return (
       <div>
@@ -166,26 +174,14 @@ const MarketPage = () => {
             </div>
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Total liquidity</p>
-              <p className="text-[24px]">
-                $
-                {Number(
-                  formatEther(
-                    BigInt(marketInfo.totalSupplyAssets) -
-                      BigInt(marketInfo.totalBorrowAssets),
-                  ),
-                ).toFixed(2)}
-              </p>
+              <p className="text-[24px]">${liquidity ? Number(formatEther(liquidity)).toFixed(2) : 0.00}</p>
             </div>
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Utilization</p>
               <p className="text-[24px]">
                 {marketInfo.totalBorrowAssets
-                  ? (marketInfo.totalBorrowAssets /
-                      BigInt(
-                        marketInfo.totalSupplyAssets -
-                          marketInfo.totalBorrowAssets,
-                      )) *
-                    100n
+                  ? (marketInfo.totalBorrowAssets * 100n) /
+                    marketInfo.totalSupplyAssets
                   : "0"}
                 %
               </p>

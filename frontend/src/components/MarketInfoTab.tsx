@@ -1,5 +1,9 @@
 import type { Market } from "../types/types";
-import { useGetMarketInfo, useGetMarketParams } from "../hooks/Syphon.js";
+import {
+  useGetMarketInfo,
+  useGetMarketParams,
+  useGetLiquidity,
+} from "../hooks/Syphon.js";
 import Tokens from "../abi/tokenToAddress.json";
 import { getReverseTokens } from "../utils/utils.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
@@ -37,13 +41,28 @@ const MarketInfoTab = ({
     error: errorBorrowRate,
   } = useGetBorrowRate(marketParams?.irm, marketInfo);
 
+  const { liquidity, isLoadingLiquidity, errorLiquidity } = useGetLiquidity(
+    syphonAddress,
+    marketId,
+  );
+
   // Handle loading
-  if (isLoadingMarketInfo || isLoadingMarketParams || isLoadingBorrowRate) {
+  if (
+    isLoadingMarketInfo ||
+    isLoadingMarketParams ||
+    isLoadingBorrowRate ||
+    isLoadingLiquidity
+  ) {
     return <div>.....Loading</div>;
   }
 
   // Handle errors separately so you can actually see what's wrong
-  if (errorMarketInfo || errorMarketParams || errorBorrowRate) {
+  if (
+    errorMarketInfo ||
+    errorMarketParams ||
+    errorBorrowRate ||
+    errorLiquidity
+  ) {
     return (
       <div>
         {errorMarketInfo && <p>Market info error: {errorMarketInfo.message}</p>}
@@ -108,13 +127,7 @@ const MarketInfoTab = ({
           <div>
             <p>
               Liquidity : $
-              {Number(
-                formatEther(
-                  BigInt(
-                    marketInfo.totalSupplyAssets - marketInfo.totalBorrowAssets,
-                  ),
-                ),
-              ).toFixed(2)}
+              {liquidity ? Number(formatEther(liquidity)).toFixed(2) : "0"}
             </p>
           </div>
         </div>

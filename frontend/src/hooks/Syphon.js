@@ -556,4 +556,24 @@ export function useGetLiquidatingUsersBorrowAmount(
   };
 }
 
+export function useGetLiquidity(syphonAddress, id, watch = true) {
+  const result = useReadContract({
+    address: syphonAddress,
+    abi: syphon,
+    functionName: "getAvailableLiquidity",
+    args: [id],
+    query: {
+      enabled: !!syphonAddress, // don't run if address missing
+      refetchInterval: watch ? 3000 : false, // auto refresh every 3s (optional)
+    },
+  });
 
+  const liquidity = result.data ? result.data : null;
+
+  return {
+    liquidity,
+    isLoadingLiquidity: result.isLoading,
+    errorLiquidity: result.error,
+    refetch: result.refetch,
+  };
+}

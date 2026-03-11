@@ -6,7 +6,12 @@ import { useAccount, useChainId } from "wagmi";
 import { getReverseTokens } from "../utils/utils.js";
 import Tokens from "../abi/tokenToAddress.json";
 import syphonAddresses from "../abi/SyphonAddresses.json";
-import { useGetMarketInfo, useGetMarketParams } from "../hooks/Syphon.js";
+import {
+  useGetMarketInfo,
+  useGetMarketParams,
+  useGetLiquidity,
+} from "../hooks/Syphon.js";
+import { useGetOraclePrice } from "../hooks/Oracle.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
 import { formatEther } from "viem";
 import { useGetERC20Balance } from "../hooks/erc20.js";
@@ -74,6 +79,14 @@ const BorrowPage = () => {
     marketParams?.collateralToken,
   );
 
+  const { oraclePrice, oraclePriceLoading, errorOraclePrice } =
+    useGetOraclePrice(marketParams?.oracle);
+
+  const { liquidity, isLoadingLiquidity, errorLiquidity } = useGetLiquidity(
+    syphonAddress,
+    id,
+  );
+
   useEffect(() => {
     if (supplyCollateralSuccess) {
       navigate(`/markets/borrow/${id}`);
@@ -135,13 +148,22 @@ const BorrowPage = () => {
     isLoadingMarketInfo ||
     isLoadingMarketParams ||
     isLoadingBorrowRate ||
-    isLoadingPosition
+    isLoadingPosition ||
+    isLoading ||
+    isLoadingLiquidity ||
+    oraclePriceLoading
   ) {
     return <div>.....Loading</div>;
   }
 
   // Handle errors separately so you can actually see what's wrong
-  if (errorMarketInfo || errorMarketParams || errorBorrowRate) {
+  if (
+    errorMarketInfo ||
+    errorMarketParams ||
+    errorBorrowRate ||
+    errorLiquidity ||
+    errorOraclePrice
+  ) {
     return (
       <div>
         {errorMarketInfo && <p>Market info error: {errorMarketInfo.message}</p>}
@@ -164,24 +186,31 @@ const BorrowPage = () => {
   console.log("irm address:", marketParams.irm);
   console.log("user poition:", position);
 
-  let userBorrowAmount = 0;
+  let userBorrowAmount = 0n;
 
   if (!position.borrowShares) {
-    userBorrowAmount = 0;
+    userBorrowAmount = 0n;
   } else {
-    userBorrowAmount = Number(
-      (position.borrowShares * marketInfo.totalBorrowAssets) /
-        marketInfo.totalBorrowShares,
-    );
+    userBorrowAmount =
+      (BigInt(position.borrowShares) * BigInt(marketInfo.totalBorrowAssets)) /
+      marketInfo.totalBorrowShares;
   }
 
-  const maxBorrow = Math.min(
-    Number(
-      formatEther(BigInt(Number(position.collateral) / 1.2 - userBorrowAmount)),
-    ),
-    Number(formatEther(marketInfo.totalSupplyAssets)) -
-      Number(formatEther(marketInfo.totalBorrowAssets)),
-  ).toFixed(2);
+  const SCALE = BigInt(1e18);
+
+  const collateralAdjusted =
+    BigInt(position.collateral * oraclePrice) / marketParams.lltv -
+    userBorrowAmount;
+
+  const availableLiquidity =
+    marketInfo.totalSupplyAssets - marketInfo.totalBorrowAssets;
+
+  const maxBorrowWei =
+    collateralAdjusted < liquidity ? collateralAdjusted : liquidity;
+
+    console.log("available liquidity:",liquidity)
+
+  console.log("borrow amount input:", borrowAmount);
 
   return (
     <div className="flex flex-col gap-[48px]">
@@ -217,6 +246,7 @@ const BorrowPage = () => {
               setInputAmount={setCollateralAmount}
               token={marketParams.collateralToken}
               max={tokenBalance}
+              price={oraclePrice}
             />
 
             <button
@@ -241,14 +271,14 @@ const BorrowPage = () => {
               inputAmount={borrowAmount}
               setInputAmount={setBorrowAmount}
               token={marketParams.loanToken}
-              max={BigInt(Number(maxBorrow) * 1e18)}
+              max={maxBorrowWei}
             />
 
             <div>
-              <p>max borrow amount: ${maxBorrow}</p>
+              <p>max borrow amount: ${maxBorrowWei}</p>
             </div>
 
-            {Number(formatEther(borrowAmount)) > maxBorrow && (
+            {Number(formatEther(borrowAmount)) > maxBorrowWei && (
               <p className="text-[12px] text-red-600">
                 *max borrow amount exceeded
               </p>
@@ -257,7 +287,7 @@ const BorrowPage = () => {
             <button
               disabled={
                 borrowAmount == 0n ||
-                Number(formatEther(borrowAmount)) > maxBorrow
+                Number(formatEther(borrowAmount)) > maxBorrowWei
               }
               onClick={() => borrow(marketParams, id, borrowAmount)}
               className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-md cursor-pointer disabled:bg-gray-500"
