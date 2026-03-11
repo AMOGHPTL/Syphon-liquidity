@@ -14,19 +14,19 @@ contract MockIrmTest is Test {
     }
 
     function testBorrowRateWhenNoSupplyAssets() public view {
-        uint256 borrowRate = mockIrm.borrowRate(Market(0, 1, 1, 1, 1, 1));
+        uint256 borrowRate = mockIrm.borrowRate(Market(0, 1, 1, 1, 1, 1, 1));
         console.log("borrow rate:", borrowRate);
         assert(borrowRate >= 80e16);
     }
 
     function testBorowRateWhenNoBorrowAssets() public view {
-        uint256 borrowRate = mockIrm.borrowRate(Market(1, 1, 0, 1, 1, 1));
+        uint256 borrowRate = mockIrm.borrowRate(Market(1, 1, 0, 1, 1, 1, 1));
         console.log("borrow rate:", borrowRate);
         assertEq(borrowRate, 1e16);
     }
 
     function testBorowRateWhenHighUtilization() public view {
-        uint256 borrowRate = mockIrm.borrowRate(Market(1, 1, 1, 1, 1, 1));
+        uint256 borrowRate = mockIrm.borrowRate(Market(1, 1, 1, 1, 1, 1, 1));
         console.log("borrow rate:", borrowRate);
         assert(borrowRate >= 80e16);
     }

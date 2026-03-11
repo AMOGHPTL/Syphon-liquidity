@@ -259,7 +259,7 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         console.log("amount to borrow:", amountToBorrow);
         console.log("total supply assets:", market.totalSupplyAssets);
         console.log("total borrow asset:", market.totalBorrowAssets);
-        console.log("liquidity left:", market.totalSupplyAssets - market.totalBorrowAssets);
+        console.log("liquidity left:", market.totalSupplyAssets - market.totalBorrowPrincipal);
         if (amountToBorrow > (market.totalSupplyAssets - market.totalBorrowPrincipal)) {
             revert Syphon__InsufficientLoanSupply();
         }
@@ -307,6 +307,9 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
             sharesToBurn = sharesToRepay;
         } else {
             sharesToBurn = Math.mulDiv(amountToRepay, market.totalBorrowShares, market.totalBorrowAssets);
+            if (sharesToBurn > position.borrowShares) {
+                sharesToBurn = position.borrowShares;
+            }
         }
         console.log("user borrow shares:", position.borrowShares);
         console.log("shares to repay:", sharesToRepay);
@@ -343,14 +346,20 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         }
         Market memory market = sMarket[id];
         Position memory position = sPositions[id][toLiquidate];
+        uint256 collateralPrice = IOracle(marketParams.oracle).price();
 
-        liquidationIncentive = position.collateral;
+        uint256 OVER_COLLATERALIZED_RATE =
+            OVER_COLLATERALIZED_PRECISION.mulDiv(OVER_COLLATERALIZED_PRECISION, marketParams.lltv);
+
         console.log("liquidation incentive:", liquidationIncentive);
         sharesToBurn = position.borrowShares;
         console.log("shares to burn", sharesToBurn);
         assetsToBurn = Math.mulDiv(sharesToBurn, market.totalBorrowAssets, market.totalBorrowShares);
         uint256 principalLiquidated = Math.mulDiv(sharesToBurn, market.totalBorrowPrincipal, market.totalBorrowShares);
         console.log("assets to burn:", assetsToBurn);
+        uint256 assetsToBurnInCollateralToken = Math.mulDiv(assetsToBurn, ORACLE_SCALE_PRECISION, collateralPrice);
+        liquidationIncentive =
+            (assetsToBurnInCollateralToken * OVER_COLLATERALIZED_RATE) / OVER_COLLATERALIZED_PRECISION;
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= assetsToBurn;
         sMarket[id].totalBorrowPrincipal -= principalLiquidated;
@@ -441,8 +450,8 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         if (market.lastUpdate == 0) return 0;
 
         uint256 elapsed = block.timestamp - market.lastUpdate;
-        if (elapsed == 0 || market.totalBorrowAssets == 0) {
-            return market.totalBorrowAssets;
+        if (elapsed == 0 || market.totalBorrowPrincipal == 0) {
+            return market.totalBorrowPrincipal;
         }
 
         MarketParams memory params = sIdToMarketParam[id];
@@ -499,10 +508,16 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         uint256 virtualTotalBorrow = getTotalBorrowAssetsWithInterest(id);
 
         assets = userShares.mulDiv(virtualTotalBorrow, market.totalBorrowShares);
+
+        // Add 1 block worth of interest as buffer (~12 seconds on mainnet)
+        MarketParams memory params = sIdToMarketParam[id];
+        uint256 borrowRate = MockIrm(params.irm).borrowRate(market);
+        uint256 oneBlockInterest = borrowRate.mulDiv(assets * 24, 365 days * INTEREST_PRECISION);
+        assets += oneBlockInterest;
     }
 
     function getAvailableLiquidity(bytes32 id) public view returns (uint256) {
-    Market memory market = sMarket[id];
-    return market.totalSupplyAssets - market.totalBorrowPrincipal;
-}
+        Market memory market = sMarket[id];
+        return market.totalSupplyAssets - market.totalBorrowPrincipal;
+    }
 }
