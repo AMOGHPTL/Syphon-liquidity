@@ -117,11 +117,7 @@ const MarketInfoTab = ({
           <div>
             <p>
               TVL : $
-              {Number(
-                formatEther(
-                  marketInfo.totalSupplyAssets + marketInfo.totalBorrowAssets,
-                ),
-              ).toFixed(2)}
+              {Number(formatEther(marketInfo.totalSupplyAssets)).toFixed(2)}
             </p>
           </div>
           <div>

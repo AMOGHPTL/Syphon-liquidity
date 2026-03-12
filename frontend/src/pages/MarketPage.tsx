@@ -164,17 +164,14 @@ const MarketPage = () => {
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Total Market size</p>
               <p className="text-[24px]">
-                $
-                {Number(
-                  formatEther(
-                    marketInfo.totalSupplyAssets + marketInfo.totalBorrowAssets,
-                  ),
-                ).toFixed(2)}
+                ${Number(formatEther(marketInfo.totalSupplyAssets)).toFixed(2)}
               </p>
             </div>
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Total liquidity</p>
-              <p className="text-[24px]">${liquidity ? Number(formatEther(liquidity)).toFixed(2) : 0.00}</p>
+              <p className="text-[24px]">
+                ${liquidity ? Number(formatEther(liquidity)).toFixed(2) : 0.0}
+              </p>
             </div>
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Utilization</p>
