@@ -27,7 +27,7 @@ export const useFaucetTokens = () => {
         address: token,
         abi: ERC20Abi,
         functionName: "mint",
-        args: [address, parseEther("100")],
+        args: [address, parseEther("1000000")],
       });
     }
   };

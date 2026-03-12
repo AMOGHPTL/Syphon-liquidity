@@ -10,6 +10,7 @@ import {
   useGetUserPosition,
   useGetUserBorrowAmount,
 } from "../hooks/Syphon.js";
+import { useGetOraclePrice } from "../hooks/Oracle.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
 import { useChainId } from "wagmi";
 import Input from "../components/Input.js";
@@ -63,6 +64,9 @@ const WithdrawCollateralPage = () => {
   const { userBorrowAmount, borrowAmountLoading, errorBorrowAmount } =
     useGetUserBorrowAmount(syphonAddress, id);
 
+  const { oraclePrice, oraclePriceLoading, errorOraclePrice } =
+    useGetOraclePrice(marketParams?.oracle);
+
   useEffect(() => {
     if (isSuccess) {
       navigate(`/markets/market/${id}`);
@@ -99,7 +103,8 @@ const WithdrawCollateralPage = () => {
     isLoadingBorrowRate ||
     isLoadingTokenBalance ||
     isLoadingPosition ||
-    borrowAmountLoading
+    borrowAmountLoading ||
+    oraclePriceLoading
   ) {
     return <div>.....Loading</div>;
   }
@@ -109,7 +114,8 @@ const WithdrawCollateralPage = () => {
     errorMarketParams ||
     errorBorrowRate ||
     errorPosition ||
-    errorBorrowAmount
+    errorBorrowAmount ||
+    errorOraclePrice
   ) {
     return (
       <div>
@@ -163,6 +169,7 @@ const WithdrawCollateralPage = () => {
                 BigInt(position?.collateral ?? 0) - minCollateral;
               return maxWithdraw > 0n ? maxWithdraw : 0n;
             })()}
+            price={oraclePrice}
           />
 
           <button

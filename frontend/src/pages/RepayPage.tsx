@@ -160,7 +160,13 @@ const RepayPage = () => {
 
           <button
             disabled={repayAmount === 0n || repayAmount > userBorrowAmount}
-            onClick={() => repay(marketParams, id, repayAmount, 0)}
+            onClick={() => {
+              if (repayAmount == userBorrowAmount) {
+                repay(marketParams, id, 0, position.borrowShares);
+              } else {
+                repay(marketParams, id, repayAmount, 0);
+              }
+            }}
             className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
             Repay

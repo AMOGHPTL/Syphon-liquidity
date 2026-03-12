@@ -339,6 +339,7 @@ export function useBorrow(syphonAddress) {
 export function useRepay(syphonAddress) {
   const [hash, setHash] = useState(null);
   const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
@@ -346,11 +347,36 @@ export function useRepay(syphonAddress) {
   const repay = async (marketParams, Id, amountToRepay, sharesToRepay) => {
     if (!marketParams || !Id || (!amountToRepay && !sharesToRepay)) return;
 
+    let approvalAmount;
+
+    if (amountToRepay > 0) {
+      // Partial repay - user passed asset amount, approve that directly
+      approvalAmount = amountToRepay;
+    } else {
+      // Full repay - user passed shares, need to calculate asset amount first
+      // Read current market state from contract
+      const market = await publicClient.readContract({
+        address: syphonAddress,
+        abi: syphon,
+        functionName: "getMarketInfo",
+        args: [Id],
+      });
+
+      // Calculate asset amount from shares same way contract does:
+      // repayAmount = sharesToRepay * totalBorrowAssets / totalBorrowShares
+      approvalAmount =
+        (sharesToRepay * market.totalBorrowAssets) / market.totalBorrowShares;
+
+      // Add small buffer (0.1%) to account for interest accruing between
+      // approval and repay transactions
+      approvalAmount = (approvalAmount * 1001n) / 1000n;
+    }
+
     await writeContractAsync({
       address: marketParams.loanToken,
       abi: erc20Abi,
       functionName: "approve",
-      args: [syphonAddress, amountToRepay],
+      args: [syphonAddress, approvalAmount],
     });
 
     const txHash = await writeContractAsync({

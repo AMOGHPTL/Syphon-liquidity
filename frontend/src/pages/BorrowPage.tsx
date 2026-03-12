@@ -208,7 +208,7 @@ const BorrowPage = () => {
   const maxBorrowWei =
     collateralAdjusted < liquidity ? collateralAdjusted : liquidity;
 
-    console.log("available liquidity:",liquidity)
+  console.log("available liquidity:", liquidity);
 
   console.log("borrow amount input:", borrowAmount);
 
@@ -275,7 +275,12 @@ const BorrowPage = () => {
             />
 
             <div>
-              <p>max borrow amount: ${maxBorrowWei}</p>
+              <p>
+                max borrow amount: $
+                {maxBorrowWei
+                  ? Number(formatEther(maxBorrowWei)).toFixed(2)
+                  : 0.0}
+              </p>
             </div>
 
             {Number(formatEther(borrowAmount)) > maxBorrowWei && (
