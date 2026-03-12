@@ -305,6 +305,10 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
 
         if (amountToRepay == 0) {
             sharesToBurn = sharesToRepay;
+            if (sharesToBurn > position.borrowShares) {
+                // ✅ add this check
+                revert Syphon__InsufficientShares();
+            }
         } else {
             sharesToBurn = Math.mulDiv(amountToRepay, market.totalBorrowShares, market.totalBorrowAssets);
             if (sharesToBurn > position.borrowShares) {
@@ -397,11 +401,8 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
             return;
         }
         uint256 borrowRate = MockIrm(marketParams.irm).borrowRate(sMarket[id]);
-        uint256 supplyRate =
-            MockIrm(marketParams.irm).borrowRate(sMarket[id]).mulDiv(SUPPLY_RATE_PRECISION, INTEREST_PRECISION);
-        uint256 supplyInterest =
-            supplyRate.mulDiv(sMarket[id].totalSupplyAssets * elapsed, 365 days * INTEREST_PRECISION);
         uint256 interest = borrowRate.mulDiv(sMarket[id].totalBorrowAssets * elapsed, 365 days * INTEREST_PRECISION);
+        uint256 supplyInterest = interest.mulDiv(SUPPLY_RATE_PRECISION, INTEREST_PRECISION);
 
         sMarket[id].totalBorrowAssets += interest;
         sMarket[id].totalSupplyAssets += supplyInterest;
