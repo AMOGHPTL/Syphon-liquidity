@@ -344,7 +344,6 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         _accrueInterest(marketParams, id);
         uint256 sharesToBurn;
         uint256 assetsToBurn;
-        uint256 liquidationIncentive;
         if (_healthFactor(marketParams, id, toLiquidate) >= HEALTHFACTOR_PRECISION) {
             revert Syphon__HealthyPosition();
         }
@@ -352,29 +351,24 @@ contract Syphon is ISyphonBase, ReentrancyGuard {
         Position memory position = sPositions[id][toLiquidate];
         uint256 collateralPrice = IOracle(marketParams.oracle).price();
 
-        uint256 OVER_COLLATERALIZED_RATE =
-            OVER_COLLATERALIZED_PRECISION.mulDiv(OVER_COLLATERALIZED_PRECISION, marketParams.lltv);
-
-        console.log("liquidation incentive:", liquidationIncentive);
         sharesToBurn = position.borrowShares;
         console.log("shares to burn", sharesToBurn);
         assetsToBurn = Math.mulDiv(sharesToBurn, market.totalBorrowAssets, market.totalBorrowShares);
         uint256 principalLiquidated = Math.mulDiv(sharesToBurn, market.totalBorrowPrincipal, market.totalBorrowShares);
         console.log("assets to burn:", assetsToBurn);
-        uint256 assetsToBurnInCollateralToken = Math.mulDiv(assetsToBurn, ORACLE_SCALE_PRECISION, collateralPrice);
-        liquidationIncentive =
-            (assetsToBurnInCollateralToken * OVER_COLLATERALIZED_RATE) / OVER_COLLATERALIZED_PRECISION;
+        uint256 assetsToBurnInCollateralToken = Math.mulDiv(assetsToBurn, ORACLE_SCALE_PRECISION, collateralPrice); // This is the liquidation incentive
+        console.log("assets to burn in collateral token:", assetsToBurnInCollateralToken);
         sMarket[id].totalBorrowShares -= sharesToBurn;
         sMarket[id].totalBorrowAssets -= assetsToBurn;
         sMarket[id].totalBorrowPrincipal -= principalLiquidated;
         sPositions[id][toLiquidate].borrowShares = 0;
-        sPositions[id][toLiquidate].collateral = 0;
+        sPositions[id][toLiquidate].collateral -= assetsToBurnInCollateralToken;
 
         IERC20(marketParams.loanToken).safeTransferFrom(msg.sender, address(this), assetsToBurn);
 
-        IERC20(marketParams.collateralToken).safeTransfer(msg.sender, liquidationIncentive);
+        IERC20(marketParams.collateralToken).safeTransfer(msg.sender, assetsToBurnInCollateralToken);
 
-        emit liquidated(toLiquidate, msg.sender, liquidationIncentive);
+        emit liquidated(toLiquidate, msg.sender, assetsToBurnInCollateralToken);
     }
 
     function _accrueInterest(MarketParams memory marketParams, bytes32 id) internal {

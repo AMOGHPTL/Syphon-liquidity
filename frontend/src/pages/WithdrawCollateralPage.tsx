@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { formatEther } from "viem";
 import toast from "react-hot-toast";
 import { useGetERC20Balance } from "../hooks/erc20.js";
+import lock from "../assets/icons/lock.svg";
 
 const WithdrawCollateralPage = () => {
   const [withdrawAmount, setwithdrawAmount] = useState<bigint>(0n);
@@ -31,7 +32,7 @@ const WithdrawCollateralPage = () => {
   const contractAddresses = syphonAddresses as Record<number, string>;
   const syphonAddress = contractAddresses[chainId];
 
-  const { withdrawCollateral, isSuccess, error } =
+  const { withdrawCollateral, isSuccess, error, isPending } =
     useWithdrawCollateral(syphonAddress);
 
   const {
@@ -177,14 +178,19 @@ const WithdrawCollateralPage = () => {
               withdrawAmount === 0n ||
               withdrawAmount >
                 BigInt(position?.collateral ?? 0) -
-                  (BigInt(userBorrowAmount ?? 0) * 120n) / 100n
+                  (BigInt(userBorrowAmount ?? 0) * 120n) / 100n ||
+              isPending
             }
             onClick={() =>
               withdrawCollateral(marketParams, id, withdrawAmount, 0)
             }
-            className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
+            className="bg-blue-600 hover:bg-blue-700 transition flex justify-center p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            Withdraw
+            {isPending ? (
+              <img src={lock} alt="" className="w-[18px]" />
+            ) : (
+              "Withdraw"
+            )}
           </button>
         </div>
       </div>

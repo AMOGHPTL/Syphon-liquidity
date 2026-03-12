@@ -11,6 +11,8 @@ import { formatEther, formatUnits } from "viem";
 import { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import lock from "../../assets/icons/lock.svg";
+import { useGetOraclePrice } from "../../hooks/Oracle.js";
 
 // Sub-component that enriches a single borrow event with market + position data
 function BorrowPositionCard({
@@ -43,7 +45,11 @@ function BorrowPositionCard({
     isConfirming,
     isSuccess,
     error: errorLiquidate,
+    isPending,
   } = useLiquidate(syphonAddress);
+
+  const { oraclePrice, oraclePriceLoading, errorOraclePrice } =
+    useGetOraclePrice(marketParams?.oracle);
 
   const truncate = (addr: string) =>
     `${addr?.slice(0, 6)}...${addr?.slice(-4)}`;
@@ -79,7 +85,14 @@ function BorrowPositionCard({
     }
   }, [errorLiquidate]);
 
-  if (isLoading || error || borrowAmountLoading || errorBorrowAmount)
+  if (
+    isLoading ||
+    error ||
+    borrowAmountLoading ||
+    errorBorrowAmount ||
+    oraclePriceLoading ||
+    errorOraclePrice
+  )
     return <p>Loading...</p>;
 
   console.log("collateral value:", positions.collateral);
@@ -111,20 +124,30 @@ function BorrowPositionCard({
         </div>
         <p>{truncate(event.borrower)}</p>
         <p className=" ">${Number(formatEther(userBorrowAmount)).toFixed(2)}</p>
-        <p>${Number(formatEther(positions.collateral)).toFixed(2)}</p>
+        <p>
+          $
+          {Number(
+            formatEther(
+              (positions.collateral * BigInt(oraclePrice)) / BigInt(1e18),
+            ),
+          ).toFixed(2)}
+        </p>
         <button
-          disabled={event.borrowAmount == 0n}
+          disabled={event.borrowAmount == 0n || isPending}
           onClick={() => {
             liquidate(
               marketParams,
               event.marketId,
               event.borrower,
-              userBorrowAmount,
             );
           }}
-          className="bg-blue-600 px-[12px] py-[8px] rounded-full cursor-pointer disabled:bg-gray-600"
+          className="bg-blue-600 flex justify-center px-[12px] py-[8px] rounded-full cursor-pointer disabled:bg-gray-600"
         >
-          Liquidate
+          {isPending ? (
+            <img src={lock} alt="" className="w-[18px]" />
+          ) : (
+            "Liquidate"
+          )}
         </button>
       </div>
     )

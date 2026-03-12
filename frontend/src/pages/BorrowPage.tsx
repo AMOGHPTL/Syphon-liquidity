@@ -22,6 +22,7 @@ import {
   useGetUserPosition,
 } from "../hooks/Syphon.js";
 import toast from "react-hot-toast";
+import lock from "../assets/icons/lock.svg";
 
 const BorrowPage = () => {
   const navigate = useNavigate();
@@ -43,12 +44,14 @@ const BorrowPage = () => {
     supplyCollateral,
     isSuccess: supplyCollateralSuccess,
     error: collateralError,
+    isPending: isPendingCollateral,
   } = useSupplyCollateral(syphonAddress);
 
   const {
     borrow,
     isSuccess: borrowSuccess,
     error: borrowError,
+    isPending: isPendingBorrow,
   } = useBorrow(syphonAddress);
 
   const {
@@ -199,8 +202,15 @@ const BorrowPage = () => {
   const SCALE = BigInt(1e18);
 
   const collateralAdjusted =
-    BigInt(position.collateral * oraclePrice) / marketParams.lltv -
+    BigInt(position.collateral * oraclePrice * marketParams.lltv) /
+      BigInt(1e36) -
     userBorrowAmount;
+
+  console.log("collateral:", position.collateral);
+  console.log("collateral value:", position.collateral * oraclePrice);
+  console.log("ltv:", marketParams.lltv);
+  console.log("collateral adjusted:", collateralAdjusted);
+  console.log("oracle price:", oraclePrice);
 
   const availableLiquidity =
     marketInfo.totalSupplyAssets - marketInfo.totalBorrowAssets;
@@ -251,14 +261,20 @@ const BorrowPage = () => {
 
             <button
               disabled={
-                collateralAmount == 0n || collateralAmount > tokenBalance
+                collateralAmount == 0n ||
+                collateralAmount > tokenBalance ||
+                isPendingCollateral
               }
               onClick={() =>
                 supplyCollateral(marketParams, id, collateralAmount)
               }
-              className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600"
+              className="bg-blue-600 hover:bg-blue-700 flex justify-center transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600"
             >
-              Supply
+              {isPendingCollateral ? (
+                <img src={lock} alt="" className="w-[18px]" />
+              ) : (
+                "Supply"
+              )}
             </button>
           </div>
 
@@ -292,12 +308,17 @@ const BorrowPage = () => {
             <button
               disabled={
                 borrowAmount == 0n ||
-                Number(formatEther(borrowAmount)) > maxBorrowWei
+                Number(formatEther(borrowAmount)) > maxBorrowWei ||
+                isPendingBorrow
               }
               onClick={() => borrow(marketParams, id, borrowAmount)}
-              className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-md cursor-pointer disabled:bg-gray-500"
+              className="bg-blue-600 flex justify-center hover:bg-blue-700 transition p-[10px] rounded-md cursor-pointer disabled:bg-gray-500"
             >
-              Borrow
+              {isPendingBorrow ? (
+                <img src={lock} alt="" className="w-[18px]" />
+              ) : (
+                "Borrow"
+              )}
             </button>
           </div>
         </div>

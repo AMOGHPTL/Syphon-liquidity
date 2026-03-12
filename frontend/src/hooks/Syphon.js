@@ -115,7 +115,7 @@ export function useGetMarketParams(syphonAddress, marketId, watch = true) {
 export function useSupply(syphonAddress) {
   const [hash, setHash] = useState(null);
 
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
 
   const {
     isLoading: isConfirming,
@@ -149,12 +149,13 @@ export function useSupply(syphonAddress) {
     isConfirming,
     isSuccess,
     error,
+    isPending,
   };
 }
 
 export function useWithdraw(syphonAddress) {
   const [hash, setHash] = useState(null);
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
@@ -182,13 +183,14 @@ export function useWithdraw(syphonAddress) {
     withdraw,
     isConfirming,
     isSuccess,
+    isPending,
   };
 }
 
 export function useSupplyCollateral(syphonAddress) {
   const [hash, setHash] = useState(null);
 
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
 
   const {
     isLoading: isConfirming,
@@ -222,13 +224,14 @@ export function useSupplyCollateral(syphonAddress) {
     isConfirming,
     isSuccess,
     error,
+    isPending,
   };
 }
 
 export function useWithdrawCollateral(syphonAddress) {
   const [hash, setHash] = useState(null);
 
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
 
   const {
     isLoading: isConfirming,
@@ -255,6 +258,7 @@ export function useWithdrawCollateral(syphonAddress) {
     isConfirming,
     isSuccess,
     error,
+    isPending,
   };
 }
 
@@ -306,7 +310,7 @@ export function useGetUsersPosition(syphonAddress, id, user, watch = true) {
 export function useBorrow(syphonAddress) {
   const [hash, setHash] = useState(null);
 
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
 
   const {
     isLoading: isConfirming,
@@ -333,12 +337,13 @@ export function useBorrow(syphonAddress) {
     isConfirming,
     isSuccess,
     error,
+    isPending,
   };
 }
 
 export function useRepay(syphonAddress) {
   const [hash, setHash] = useState(null);
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
   const publicClient = usePublicClient();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
@@ -393,6 +398,7 @@ export function useRepay(syphonAddress) {
     repay,
     isConfirming,
     isSuccess,
+    isPending,
   };
 }
 
@@ -472,7 +478,8 @@ export function useBorrowedEvents(contractAddress) {
 export function useLiquidate(syphonAddress) {
   const [hash, setHash] = useState(null);
 
-  const { writeContractAsync } = useWriteContract();
+  const { writeContractAsync, isPending } = useWriteContract();
+  const publicClient = usePublicClient();
 
   const {
     isLoading: isConfirming,
@@ -481,14 +488,34 @@ export function useLiquidate(syphonAddress) {
   } = useWaitForTransactionReceipt({
     hash,
   });
-  const liquidate = async (marketParams, Id, toLiquidate, amount) => {
+  const liquidate = async (marketParams, Id, toLiquidate) => {
     if (!marketParams || !Id || !toLiquidate) return;
+
+    const market = await publicClient.readContract({
+      address: syphonAddress,
+      abi: syphon,
+      functionName: "getMarketInfo",
+      args: [Id],
+    });
+
+    const position = await publicClient.readContract({
+      address: syphonAddress,
+      abi: syphon,
+      functionName: "getUserPosition",
+      args: [Id, toLiquidate],
+    });
+
+    let amountToApprove =
+      (position.borrowShares * market.totalBorrowAssets) /
+      market.totalBorrowShares;
+
+    amountToApprove = (amountToApprove * 1001n) / 1000n;
 
     await writeContractAsync({
       address: marketParams.loanToken,
       abi: erc20Abi,
       functionName: "approve",
-      args: [syphonAddress, amount],
+      args: [syphonAddress, amountToApprove],
     });
 
     const txHash = await writeContractAsync({
@@ -506,6 +533,7 @@ export function useLiquidate(syphonAddress) {
     isConfirming,
     isSuccess,
     error,
+    isPending,
   };
 }
 

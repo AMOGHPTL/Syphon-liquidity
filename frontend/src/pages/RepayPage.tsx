@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { formatEther } from "viem";
 import toast from "react-hot-toast";
 import { useGetERC20Balance } from "../hooks/erc20.js";
+import lock from "../assets/icons/lock.svg";
 
 const RepayPage = () => {
   const [repayAmount, setrepayAmount] = useState<bigint>(0n);
@@ -30,7 +31,7 @@ const RepayPage = () => {
   const contractAddresses = syphonAddresses as Record<number, string>;
   const syphonAddress = contractAddresses[chainId];
 
-  const { repay, isSuccess, error } = useRepay(syphonAddress);
+  const { repay, isSuccess, error, isPending } = useRepay(syphonAddress);
 
   const {
     marketInfo,
@@ -169,7 +170,11 @@ const RepayPage = () => {
             }}
             className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            Repay
+            {isPending ? (
+              <img src={lock} alt="" className="w-[18px]" />
+            ) : (
+              "Repay"
+            )}
           </button>
         </div>
       </div>

@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { formatEther } from "viem";
 import toast from "react-hot-toast";
 import { useGetERC20Balance } from "../hooks/erc20.js";
+import lock from "../assets/icons/lock.svg";
 
 const SupplyPage = () => {
   const [supplyAmount, setSupplyAmount] = useState<bigint>(0n);
@@ -28,7 +29,7 @@ const SupplyPage = () => {
   const contractAddresses = syphonAddresses as Record<number, string>;
   const syphonAddress = contractAddresses[chainId];
 
-  const { supply, isSuccess, error } = useSupply(syphonAddress);
+  const { supply, isSuccess, error, isPending } = useSupply(syphonAddress);
 
   const {
     marketInfo,
@@ -140,11 +141,17 @@ const SupplyPage = () => {
           />
 
           <button
-            disabled={supplyAmount === 0n || supplyAmount > tokenBalance}
+            disabled={
+              supplyAmount === 0n || supplyAmount > tokenBalance || isPending
+            }
             onClick={() => supply(marketParams, id, supplyAmount)}
-            className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
+            className="bg-blue-600 hover:bg-blue-700 flex justify-center transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
-            Supply
+            {isPending ? (
+              <img src={lock} alt="" className="w-[18px]" />
+            ) : (
+              "Supply"
+            )}
           </button>
         </div>
       </div>
