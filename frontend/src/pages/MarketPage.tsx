@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { getReverseTokens } from "../utils/utils.js";
+import { getReverseTokens, formatNumber } from "../utils/utils.js";
 import Tokens from "../abi/tokenToAddress.json";
 import {
   useGetMarketInfo,
@@ -14,7 +14,6 @@ import arrow from "../assets/icons/arrow-down-3101.svg";
 import { formatEther } from "viem";
 import NavBtn from "../components/low-level/NavBtn.js";
 import {
-  useWithdraw,
   useGetUserPosition,
   useGetUserBorrowAmount,
   useGetLiquidity,
@@ -164,13 +163,19 @@ const MarketPage = () => {
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Total Market size</p>
               <p className="text-[24px]">
-                ${Number(formatEther(marketInfo.totalSupplyAssets)).toFixed(2)}
+                $
+                {formatNumber(
+                  Number(formatEther(marketInfo.totalSupplyAssets)).toFixed(2),
+                )}
               </p>
             </div>
             <div className="flex flex-col gap-[12px]">
               <p className="text-[16px]">Total liquidity</p>
               <p className="text-[24px]">
-                ${liquidity ? Number(formatEther(liquidity)).toFixed(2) : 0.0}
+                $
+                {liquidity
+                  ? formatNumber(Number(formatEther(liquidity)).toFixed(2))
+                  : 0.0}
               </p>
             </div>
             <div className="flex flex-col gap-[12px]">
@@ -190,12 +195,15 @@ const MarketPage = () => {
               </p>
             </div>
             <div className="flex flex-col gap-[12px]">
-              <p className="text-[16px]">ltv</p>
-              {/* <p className="text-[24px]">
-                {(BigInt(marketParams.lltv) * BigInt(100)) / BigInt(1e18)}%
-              </p> */}
+              <p className="text-[16px]">Safe ltv</p>
               <p className="text-[24px]">
-                {BigInt(marketParams.lltv) / BigInt(1e16)}%{" "}
+                {formatEther(marketParams.lltv * 90n)}%
+              </p>
+            </div>
+            <div className="flex flex-col gap-[12px]">
+              <p className="text-[16px]">Liquidation ltv</p>
+              <p className="text-[24px]">
+                {formatEther(marketParams.lltv * 100n)}%
               </p>
             </div>
           </div>
@@ -239,16 +247,19 @@ const MarketPage = () => {
         </div>
         {/* borrow and supply part */}
         <div className="flex items-center gap-[48px]">
-          {/* borrow */}
-          <div>
-            <div>
-              <NavBtn to={`/markets/borrow/${id}`} text="borrow" />
-            </div>
-          </div>
           {/* supply */}
           <div>
             <div>
-              <NavBtn to={`/markets/supply/${id}`} text="supply" />
+              <NavBtn to={`/markets/supply/${id}`} text="Lend" />
+            </div>
+          </div>
+          {/* borrow */}
+          <div>
+            <div>
+              <NavBtn
+                to={`/markets/borrow/${id}`}
+                text={position.collateral ? "Borrow" : "Supply Collateral"}
+              />
             </div>
           </div>
         </div>
@@ -265,7 +276,7 @@ const MarketPage = () => {
                     id={id}
                     token={addressToToken[marketParams.loanToken]}
                     path="withdraw"
-                    title="Liquidity"
+                    title="Liquidity Lent"
                     value={formatEther(
                       BigInt(
                         (position.supplyShares * marketInfo.totalSupplyAssets) /
@@ -279,9 +290,10 @@ const MarketPage = () => {
                 <MarketPositionTab
                   id={id}
                   path="withdrawCollateral"
-                  title="Collateral"
+                  title="Supplied Collateral"
                   value={formatEther(position.collateral)}
                   token={addressToToken[marketParams.collateralToken]}
+                  price={oraclePrice}
                 />
               )}
               {position.borrowShares != 0n &&
@@ -289,7 +301,7 @@ const MarketPage = () => {
                   <MarketPositionTab
                     id={id}
                     path="repay"
-                    title="Borrow"
+                    title="Borrowed"
                     value={formatEther(
                       // BigInt(
                       //   (position.borrowShares * marketInfo.totalBorrowAssets) /

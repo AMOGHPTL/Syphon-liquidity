@@ -94,6 +94,7 @@ const BorrowPage = () => {
     if (supplyCollateralSuccess) {
       navigate(`/markets/borrow/${id}`);
       toast.success(`supplied collateral $${formatEther(collateralAmount)}`);
+      setCollateralAmount(0n);
     }
   }, [supplyCollateralSuccess]);
 
@@ -290,9 +291,18 @@ const BorrowPage = () => {
               max={maxBorrowWei}
             />
 
-            <div>
-              <p>
-                max borrow amount: $
+            <div className="flex justify-between">
+              <p
+                onClick={() => setBorrowAmount((maxBorrowWei * 90n) / 100n)}
+                className="text-green-400 cursor-pointer"
+              >
+                Safe ltv: $
+                {maxBorrowWei
+                  ? Number(formatEther((maxBorrowWei * 90n) / 100n)).toFixed(2)
+                  : 0.0}
+              </p>
+              <p className="text-red-600">
+                Liquidation ltv: $
                 {maxBorrowWei
                   ? Number(formatEther(maxBorrowWei)).toFixed(2)
                   : 0.0}
@@ -308,7 +318,7 @@ const BorrowPage = () => {
             <button
               disabled={
                 borrowAmount == 0n ||
-                Number(formatEther(borrowAmount)) > maxBorrowWei ||
+                borrowAmount > maxBorrowWei ||
                 isPendingBorrow
               }
               onClick={() => borrow(marketParams, id, borrowAmount)}

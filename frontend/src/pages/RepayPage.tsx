@@ -160,7 +160,9 @@ const RepayPage = () => {
           />
 
           <button
-            disabled={repayAmount === 0n || repayAmount > userBorrowAmount}
+            disabled={
+              repayAmount === 0n || repayAmount > userBorrowAmount || isPending
+            }
             onClick={() => {
               if (repayAmount == userBorrowAmount) {
                 repay(marketParams, id, 0, position.borrowShares);
@@ -168,7 +170,7 @@ const RepayPage = () => {
                 repay(marketParams, id, repayAmount, 0);
               }
             }}
-            className="bg-blue-600 hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
+            className="bg-blue-600 flex items-center hover:bg-blue-700 transition p-[10px] rounded-xl cursor-pointer disabled:bg-gray-600 disabled:cursor-not-allowed"
           >
             {isPending ? (
               <img src={lock} alt="" className="w-[18px]" />

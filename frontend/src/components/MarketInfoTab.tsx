@@ -5,7 +5,7 @@ import {
   useGetLiquidity,
 } from "../hooks/Syphon.js";
 import Tokens from "../abi/tokenToAddress.json";
-import { getReverseTokens } from "../utils/utils.js";
+import { getReverseTokens, formatNumber } from "../utils/utils.js";
 import { useGetBorrowRate } from "../hooks/Irm.js";
 import { formatEther, type Hex } from "viem";
 import token from "../../public/tokens/pUSD.svg";
@@ -117,13 +117,17 @@ const MarketInfoTab = ({
           <div>
             <p>
               TVL : $
-              {Number(formatEther(marketInfo.totalSupplyAssets)).toFixed(2)}
+              {formatNumber(
+                Number(formatEther(marketInfo.totalSupplyAssets)).toFixed(2),
+              )}
             </p>
           </div>
           <div>
             <p>
               Liquidity : $
-              {liquidity ? Number(formatEther(liquidity)).toFixed(2) : "0"}
+              {liquidity
+                ? formatNumber(Number(formatEther(liquidity)).toFixed(2))
+                : "0"}
             </p>
           </div>
         </div>

@@ -165,9 +165,12 @@ const WithdrawCollateralPage = () => {
             token={marketParams.loanToken}
             max={(() => {
               const minCollateral =
-                (BigInt(userBorrowAmount ?? 0) * 120n) / 100n;
+                (BigInt(userBorrowAmount ?? 0) * marketParams.lltv) /
+                BigInt(1e18);
               const maxWithdraw =
-                BigInt(position?.collateral ?? 0) - minCollateral;
+                (BigInt(position?.collateral ?? 0) * oraclePrice) /
+                  BigInt(1e18) -
+                minCollateral;
               return maxWithdraw > 0n ? maxWithdraw : 0n;
             })()}
             price={oraclePrice}

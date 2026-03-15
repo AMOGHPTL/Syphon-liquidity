@@ -17,11 +17,15 @@ const Input = ({
 }) => {
   const [displayValue, setDisplayValue] = useState(""); // ADD THIS
 
-  useEffect(() => {
-    if (inputAmount === 0n) setDisplayValue("");
-  }, [inputAmount]);
-
   const formattedBalance = max ? Number(formatEther(max)).toFixed(2) : "0.00";
+
+  useEffect(() => {
+    if (inputAmount == 0n) {
+      setDisplayValue("");
+    } else {
+      setDisplayValue(formatEther(inputAmount));
+    }
+  }, [inputAmount]);
 
   return (
     <div className="flex flex-col gap-[12px]">
@@ -49,7 +53,7 @@ const Input = ({
         <p>
           $
           {price
-            ? formatEther(BigInt(displayValue) * BigInt(price))
+            ? formatEther((inputAmount * BigInt(price)) / BigInt(1e18))
             : displayValue || "0.00"}
         </p>
 

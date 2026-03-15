@@ -99,8 +99,9 @@ function BorrowPositionCard({
   console.log("users borrow amount:", userBorrowAmount);
 
   return (
-    BigInt(userBorrowAmount ?? 0n) * 120n >
-      BigInt(positions.collateral ?? 0n) * 100n &&
+    BigInt(userBorrowAmount ?? 0n) >
+      (BigInt(positions.collateral ?? 0n) * oraclePrice * marketParams.lltv) /
+        BigInt(1e36) &&
     userBorrowAmount != 0n && (
       <div className="w-full p-[24px] grid grid-cols-[repeat(5,1fr)] items-center overflow-hidden bg-white/5 hover:bg-white/10 rounded-2xl cursor-pointer">
         <div className="flex items-center gap-[8px]">
@@ -135,11 +136,7 @@ function BorrowPositionCard({
         <button
           disabled={event.borrowAmount == 0n || isPending}
           onClick={() => {
-            liquidate(
-              marketParams,
-              event.marketId,
-              event.borrower,
-            );
+            liquidate(marketParams, event.marketId, event.borrower);
           }}
           className="bg-blue-600 flex justify-center px-[12px] py-[8px] rounded-full cursor-pointer disabled:bg-gray-600"
         >

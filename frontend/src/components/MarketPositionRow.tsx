@@ -9,6 +9,7 @@ import { getReverseTokens } from "../utils/utils.js";
 import Tokens from "../abi/tokenToAddress.json";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import { useGetOraclePrice } from "../hooks/Oracle.js";
 
 interface Props {
   syphonAddress: string;
@@ -39,6 +40,9 @@ const MarketPositionRow = ({
     error: errorMarketParams,
   } = useGetMarketParams(syphonAddress, marketId);
 
+  const { oraclePrice, oraclePriceLoading, errorOraclePrice } =
+    useGetOraclePrice(marketParams?.oracle);
+
   const hasPosition =
     (position?.supplyShares ?? 0n) > 0n ||
     (position?.borrowShares ?? 0n) > 0n ||
@@ -49,7 +53,7 @@ const MarketPositionRow = ({
       onHasPosition?.(hasPosition);
     }
   }, [hasPosition, posLoading, infoLoading, paramsLoading]);
-  if (posLoading || infoLoading || paramsLoading) {
+  if (posLoading || infoLoading || paramsLoading || oraclePriceLoading) {
     return (
       <div>
         <p className=" text-gray-400 animate-pulse">
@@ -59,7 +63,7 @@ const MarketPositionRow = ({
     );
   }
 
-  if (errorPosition || errorMarketInfo || errorMarketParams)
+  if (errorPosition || errorMarketInfo || errorMarketParams || errorOraclePrice)
     return <p>Error</p>;
 
   if (!hasPosition) return null;
@@ -102,7 +106,7 @@ const MarketPositionRow = ({
       </p>
       <p className=" ">
         {position?.collateral
-          ? `$${formatUnits(position.collateral as bigint, 18)}`
+          ? `$${(Number(position.collateral * oraclePrice) / 1e36).toFixed(2)}`
           : "$0"}
       </p>
       <p className=" ">
