@@ -2,7 +2,9 @@
 
 > If you are from Twitter or LinkedIn, please leave a like 💝
 
-![Syphon Banner](image_here)
+![Syphon Banner](./Banner.gif)
+
+working walkthrough of the dapp - 
 
 [![Demo Video](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/5f1BVLUFtwc)
 
@@ -61,6 +63,10 @@ Syphon heavily depends on oracle price feeds to get the price of tokens for a sm
 4. **Piecewise Interest Rate Curve** — Uses a nonlinear curve above and below the target utilization
 5. **Continuous Compounding Interest Accrual** — Borrow APY calculated using exponential compounding
 6. **Oracle-Based Risk Engine** — Relies heavily on oracle math for collateral valuation and liquidations
+
+---
+
+The protocol is still in testing and will be deployed on base soon!
 
 ---
 
