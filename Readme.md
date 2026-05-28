@@ -1,6 +1,6 @@
 # 🌊 Syphon Liquidity — Supply, Borrow and EARN with Ease
 
-> If you are from Twitter or LinkedIn, please leave a like 💝
+> If you are from Twitter or LinkedIn, please leave a star ⭐ 💝
 
 ![Syphon Banner](./Banner.gif)
 
